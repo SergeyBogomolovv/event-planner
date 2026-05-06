@@ -21,6 +21,8 @@ Core project decisions:
 - Store and invalidate refresh sessions in Redis.
 - Use bcrypt for password hashing.
 - Use `@nestjs/bullmq` + BullMQ + Redis for background jobs.
+- BullMQ processors live inside the NestJS backend application.
+- Do not create a separate worker service or a separate worker Docker image unless explicitly requested.
 - Use Google as the mail provider.
 - Backend and frontend are separate projects in one repository; do not introduce monorepo tooling.
 
@@ -33,7 +35,7 @@ Domain rules to preserve:
 - Regular participant list responses include organizer and accepted participants.
 - Organizer management responses may include invited, accepted, declined, and removed statuses.
 - Do not add a separate participant status history table.
-- Email notifications are part of the first version and should be queued through BullMQ.
+- Email notifications are part of the first version and should be queued through BullMQ, then processed by the backend application's in-process queue processor.
 
 Testing guidance:
 

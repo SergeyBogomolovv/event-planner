@@ -66,7 +66,7 @@
 ### Infrastructure
 
 - **Docker** — основной способ локального запуска проекта.
-- **Docker Compose** — запуск frontend, backend, PostgreSQL, Redis и worker-процесса.
+- **Docker Compose** — запуск frontend, backend, PostgreSQL и Redis.
 - **Redis** — используется BullMQ для фоновой обработки email-уведомлений.
 - **GitHub Actions** — CI/CD пайплайн.
 - **Docker Hub** — registry для собранных контейнеров.
@@ -131,8 +131,10 @@ Email-уведомления отправляются через очередь:
 
 - backend создаёт запись `email_messages`;
 - backend добавляет задачу в BullMQ;
-- worker обрабатывает задачу и отправляет письмо;
+- BullMQ processor внутри backend-приложения обрабатывает задачу и отправляет письмо;
 - результат отправки сохраняется в `email_messages`.
+
+Worker не является отдельным сервисом и не собирается в отдельный Docker image. Он живёт внутри NestJS backend-приложения как фоновый обработчик очереди.
 
 Mail provider:
 
@@ -141,8 +143,7 @@ Mail provider:
 Локальный запуск планируется через Docker Compose:
 
 - `frontend` — Next.js приложение;
-- `backend` — NestJS API;
-- `worker` — обработчик BullMQ задач;
+- `backend` — NestJS API и BullMQ processor для фоновых задач;
 - `postgres` — база данных;
 - `redis` — очередь фоновых задач.
 
@@ -166,7 +167,6 @@ Mail provider:
 - прогнать тесты;
 - собрать Docker image для `backend`;
 - собрать Docker image для `frontend`;
-- собрать Docker image для `worker`, если он будет отдельным образом;
 - запушить контейнеры в Docker Hub.
 
 Автоматический деплой в production пока не делаем. Production-запуск выполняется вручную: контейнеры забираются из Docker Hub и запускаются на выбранном сервере.
