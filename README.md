@@ -10,6 +10,39 @@
 - [Бэкенд и база данных](docs/BACKEND.md)
 - [Фронтенд](docs/FRONTEND.md)
 
+## Локальный запуск
+
+На текущем этапе `docker-compose.local.yaml` поднимает инфраструктуру проекта:
+
+- PostgreSQL на `localhost:5432`;
+- Redis на `localhost:6379`.
+
+Backend и frontend запускаются вручную через npm-команды из своих папок.
+
+```bash
+docker compose -f docker-compose.local.yaml up -d
+```
+
+```bash
+cd backend
+cp .env.example .env
+npm run start:dev
+```
+
+Проверка backend:
+
+```bash
+curl http://localhost:3000/api/v1/health
+```
+
+```bash
+cd frontend
+cp .env.example .env.local
+npm run dev -- -p 3001
+```
+
+Frontend будет доступен на `http://localhost:3001`.
+
 ## Технологический стек
 
 ### Backend
