@@ -64,9 +64,7 @@ export class AuthService {
       throw new UnauthorizedException('Missing refresh token');
     }
 
-    const payload = await this.jwt.verifyAsync<JwtPayload>(refreshToken, {
-      secret: this.getRefreshSecret(),
-    });
+    const payload = await this.verifyRefreshToken(refreshToken);
     const storedToken = await this.sessions.getRefreshSession(payload.sub);
     if (!storedToken || storedToken !== refreshToken) {
       throw new UnauthorizedException('Invalid refresh session');
@@ -79,6 +77,16 @@ export class AuthService {
 
     await this.issueCookies(user.id, response);
     return this.usersService.toSafeUser(user);
+  }
+
+  private async verifyRefreshToken(refreshToken: string): Promise<JwtPayload> {
+    try {
+      return await this.jwt.verifyAsync<JwtPayload>(refreshToken, {
+        secret: this.getRefreshSecret(),
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
   }
 
   async logout(user: SafeUser, response: Response): Promise<{ ok: true }> {

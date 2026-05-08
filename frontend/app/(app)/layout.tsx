@@ -1,46 +1,56 @@
-import Link from "next/link";
-import { CalendarDays, LayoutDashboard, UserRound } from "lucide-react";
-import { LogoutButton } from "@/components/logout-button";
-import { getCurrentUser } from "@/lib/server-api";
+import Link from 'next/link'
+import { CalendarDays } from 'lucide-react'
+import { AppSidebarNav } from '@/components/app-sidebar-link'
+import { LogoutButton } from '@/components/logout-button'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { getCurrentUser } from '@/lib/server-api'
+
+const roleLabels = {
+  admin: 'Администратор',
+  user: 'Пользователь',
+}
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const user = await getCurrentUser();
+  const user = await getCurrentUser()
 
   return (
-    <main className="min-h-screen bg-[#f7f7f2] text-zinc-950">
-      <div className="mx-auto flex min-h-screen max-w-7xl">
-        <aside className="hidden w-72 border-r border-zinc-200 bg-white p-6 md:block">
-          <Link href="/dashboard" className="text-lg font-semibold">
-            Event Planner
+    <main className='min-h-screen bg-[linear-gradient(180deg,#f8faf7_0%,#eef4f1_45%,#f7f7f2_100%)] text-zinc-950'>
+      <div className='mx-auto flex min-h-screen max-w-7xl'>
+        <aside className='hidden w-72 border-r border-zinc-200/80 bg-white/90 p-6 backdrop-blur md:block'>
+          <Link href='/dashboard' className='flex items-center gap-3 text-lg font-semibold'>
+            <span className='grid size-9 place-items-center rounded-lg bg-zinc-950 text-white'>
+              <CalendarDays className='h-5 w-5' />
+            </span>
+            <span>Event Planner</span>
           </Link>
-          <nav className="mt-8 space-y-2 text-sm">
-            <Link className="flex items-center gap-3 rounded-md px-3 py-2 hover:bg-zinc-100" href="/dashboard">
-              <LayoutDashboard className="h-4 w-4" />
-              Кабинет
-            </Link>
-            <Link className="flex items-center gap-3 rounded-md px-3 py-2 hover:bg-zinc-100" href="/profile">
-              <UserRound className="h-4 w-4" />
-              Профиль
-            </Link>
-          </nav>
-          <div className="mt-8 rounded-lg border border-zinc-200 bg-[#f7f7f2] p-4 text-sm">
-            <p className="font-medium">{user.name}</p>
-            <p className="mt-1 text-zinc-600">{user.email}</p>
-            <p className="mt-3 text-xs uppercase tracking-[0.2em] text-zinc-500">{user.role}</p>
+          <AppSidebarNav />
+
+          <Separator className='my-6' />
+          <div className='rounded-xl bg-muted/70 p-4 text-sm ring-1 ring-border'>
+            <div className='space-y-3'>
+              <div className='flex items-start justify-between gap-3'>
+                <p className='min-w-0 break-words font-medium'>{user.name}</p>
+                <Badge variant='outline' className='shrink-0'>
+                  {roleLabels[user.role]}
+                </Badge>
+              </div>
+              <p className='break-all leading-5 text-muted-foreground'>{user.email}</p>
+            </div>
           </div>
         </aside>
 
-        <section className="flex min-w-0 flex-1 flex-col">
-          <header className="flex items-center justify-between border-b border-zinc-200 bg-white px-6 py-4">
-            <div className="flex items-center gap-3">
-              <CalendarDays className="h-5 w-5" />
-              <span className="font-medium">Закрытая зона</span>
+        <section className='flex min-w-0 flex-1 flex-col'>
+          <header className='sticky top-0 z-20 flex items-center justify-between border-b border-zinc-200/80 bg-white/85 px-6 py-4 backdrop-blur'>
+            <div className='flex items-center gap-3'>
+              <CalendarDays className='h-5 w-5' />
+              <span className='font-medium'>Кабинет</span>
             </div>
             <LogoutButton />
           </header>
-          <div className="flex-1 p-6">{children}</div>
+          <div className='flex-1 p-6'>{children}</div>
         </section>
       </div>
     </main>
-  );
+  )
 }

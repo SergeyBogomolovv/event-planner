@@ -49,5 +49,8 @@ function booleanValue(value: string | undefined, fallback: boolean) {
   if (value === undefined || value === '') {
     return fallback;
   }
+  if (!['true', 'false'].includes(value)) {
+    throw new Error(`Expected boolean env value, got "${value}"`);
+  }
   return value === 'true';
 }

@@ -1,33 +1,36 @@
-"use client";
+'use client'
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { LogOut } from "lucide-react";
-import { apiRequest } from "@/lib/api";
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { LogOut } from 'lucide-react'
+import { apiRequest } from '@/lib/api'
+import { Button } from '@/components/ui/button'
 
 export function LogoutButton() {
-  const router = useRouter();
-  const [pending, setPending] = useState(false);
+  const router = useRouter()
+  const [pending, setPending] = useState(false)
 
   async function logout() {
-    setPending(true);
+    setPending(true)
     try {
-      await apiRequest<{ ok: true }>("/auth/logout", { method: "POST" });
+      await apiRequest<{ ok: true }>('/auth/logout', { method: 'POST' })
     } finally {
-      router.push("/");
-      router.refresh();
+      router.push('/')
+      router.refresh()
     }
   }
 
   return (
-    <button
-      type="button"
+    <Button
+      type='button'
       onClick={logout}
       disabled={pending}
-      className="inline-flex h-10 items-center gap-2 rounded-md border border-zinc-300 px-3 text-sm hover:bg-zinc-100 disabled:opacity-60"
+      variant='outline'
+      size='lg'
+      className='gap-2'
     >
-      <LogOut className="h-4 w-4" />
+      <LogOut className='h-4 w-4' />
       Выйти
-    </button>
-  );
+    </Button>
+  )
 }

@@ -29,7 +29,7 @@ export class UsersService {
   }
 
   async create(params: { name: string; email: string; passwordHash: string }) {
-    const email = params.email.toLowerCase();
+    const email = this.normalizeEmail(params.email);
     const existing = await this.users.findOne({ where: { email } });
     if (existing) {
       throw new ConflictException('Email is already registered');
@@ -38,7 +38,7 @@ export class UsersService {
     const user = await this.users.save(
       this.users.create({
         email,
-        name: params.name,
+        name: this.normalizeName(params.name),
         passwordHash: params.passwordHash,
         role: UserRole.User,
         status: UserStatus.Active,
@@ -49,7 +49,7 @@ export class UsersService {
   }
 
   findByEmail(email: string) {
-    return this.users.findOne({ where: { email: email.toLowerCase() } });
+    return this.users.findOne({ where: { email: this.normalizeEmail(email) } });
   }
 
   findById(id: string) {
@@ -70,20 +70,32 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    if (dto.email && dto.email.toLowerCase() !== user.email) {
+    if (
+      dto.email !== undefined &&
+      this.normalizeEmail(dto.email) !== user.email
+    ) {
+      const email = this.normalizeEmail(dto.email);
       const existing = await this.users.findOne({
-        where: { email: dto.email.toLowerCase() },
+        where: { email },
       });
       if (existing) {
         throw new ConflictException('Email is already registered');
       }
-      user.email = dto.email.toLowerCase();
+      user.email = email;
     }
 
-    if (dto.name) {
-      user.name = dto.name;
+    if (dto.name !== undefined) {
+      user.name = this.normalizeName(dto.name);
     }
 
     return this.toSafeUser(await this.users.save(user));
+  }
+
+  private normalizeEmail(email: string): string {
+    return email.trim().toLowerCase();
+  }
+
+  private normalizeName(name: string): string {
+    return name.trim();
   }
 }

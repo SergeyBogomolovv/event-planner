@@ -2,31 +2,48 @@
 
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowRight, Loader2 } from 'lucide-react'
+import { useForm } from 'react-hook-form'
+import { ArrowRight } from 'lucide-react'
 import { apiRequest, CurrentUser } from '@/lib/api'
+import { applyValidationErrors } from '@/lib/form-errors'
+import { loginSchema, registerSchema, type AuthFormValues } from '@/lib/form-schemas'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { FieldGroup } from '@/components/ui/field'
+import { Input } from '@/components/ui/input'
+import { Spinner } from '@/components/ui/spinner'
+import { ValidatedField } from '@/components/validated-field'
 
 type Mode = 'login' | 'register'
 
 export function AuthForm({ mode }: { mode: Mode }) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const form = useForm<AuthFormValues>({
+    defaultValues: {
+      name: '',
+      email: '',
+      password: '',
+    },
+  })
   const [error, setError] = useState('')
-  const [pending, setPending] = useState(false)
 
-  async function onSubmit(formData: FormData) {
+  async function submit(values: AuthFormValues) {
     setError('')
-    setPending(true)
+
+    const schema = mode === 'register' ? registerSchema : loginSchema
+    const parsed = schema.safeParse(values)
+    if (!parsed.success) {
+      applyValidationErrors<AuthFormValues>(parsed.error.issues, form.setError)
+      return
+    }
 
     const payload =
       mode === 'register'
-        ? {
-            name: String(formData.get('name') ?? ''),
-            email: String(formData.get('email') ?? ''),
-            password: String(formData.get('password') ?? ''),
-          }
+        ? parsed.data
         : {
-            email: String(formData.get('email') ?? ''),
-            password: String(formData.get('password') ?? ''),
+            email: parsed.data.email,
+            password: parsed.data.password,
           }
 
     try {
@@ -38,66 +55,57 @@ export function AuthForm({ mode }: { mode: Mode }) {
       router.refresh()
     } catch (err) {
       setError(err instanceof Error ? normalizeError(err.message) : 'Не удалось выполнить вход')
-    } finally {
-      setPending(false)
     }
   }
 
   return (
-    <form action={onSubmit} className='space-y-4'>
-      {mode === 'register' ? (
-        <label className='block'>
-          <span className='text-sm font-medium text-zinc-700'>Имя</span>
-          <input
-            required
-            name='name'
-            className='mt-2 h-12 w-full rounded-md border border-zinc-300 bg-white px-4 outline-none focus:border-zinc-950'
-            placeholder='Анна Организатор'
+    <form onSubmit={form.handleSubmit(submit)} className='space-y-4'>
+      <FieldGroup>
+        {mode === 'register' ? (
+          <ValidatedField htmlFor='name' label='Имя' error={form.formState.errors.name?.message}>
+            <Input
+              id='name'
+              className='h-12 bg-white'
+              placeholder='Анна Организатор'
+              aria-invalid={Boolean(form.formState.errors.name)}
+              {...form.register('name')}
+            />
+          </ValidatedField>
+        ) : null}
+
+        <ValidatedField htmlFor='email' label='Email' error={form.formState.errors.email?.message}>
+          <Input
+            id='email'
+            type='email'
+            className='h-12 bg-white'
+            placeholder='you@example.com'
+            aria-invalid={Boolean(form.formState.errors.email)}
+            {...form.register('email')}
           />
-        </label>
-      ) : null}
+        </ValidatedField>
 
-      <label className='block'>
-        <span className='text-sm font-medium text-zinc-700'>Email</span>
-        <input
-          required
-          type='email'
-          name='email'
-          className='mt-2 h-12 w-full rounded-md border border-zinc-300 bg-white px-4 outline-none focus:border-zinc-950'
-          placeholder='you@example.com'
-        />
-      </label>
-
-      <label className='block'>
-        <span className='text-sm font-medium text-zinc-700'>Пароль</span>
-        <input
-          required
-          minLength={8}
-          type='password'
-          name='password'
-          className='mt-2 h-12 w-full rounded-md border border-zinc-300 bg-white px-4 outline-none focus:border-zinc-950'
-          placeholder='Минимум 8 символов'
-        />
-      </label>
+        <ValidatedField htmlFor='password' label='Пароль' error={form.formState.errors.password?.message}>
+          <Input
+            id='password'
+            type='password'
+            className='h-12 bg-white'
+            placeholder='Минимум 8 символов'
+            aria-invalid={Boolean(form.formState.errors.password)}
+            {...form.register('password')}
+          />
+        </ValidatedField>
+      </FieldGroup>
 
       {error ? (
-        <p className='rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700'>
-          {error}
-        </p>
+        <Alert variant='destructive'>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       ) : null}
 
-      <button
-        type='submit'
-        disabled={pending}
-        className='flex h-12 w-full items-center justify-center gap-2 rounded-md bg-zinc-950 px-4 font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-70'
-      >
-        {pending ? (
-          <Loader2 className='h-4 w-4 animate-spin' />
-        ) : (
-          <ArrowRight className='h-4 w-4' />
-        )}
+      <Button type='submit' disabled={form.formState.isSubmitting} className='h-12 w-full gap-2'>
+        {form.formState.isSubmitting ? <Spinner /> : <ArrowRight className='h-4 w-4' />}
         {mode === 'register' ? 'Создать аккаунт' : 'Войти'}
-      </button>
+      </Button>
     </form>
   )
 }

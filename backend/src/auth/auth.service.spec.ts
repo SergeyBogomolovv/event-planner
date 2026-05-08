@@ -75,6 +75,7 @@ describe('AuthService', () => {
         usersService as never,
       ),
       response,
+      jwt,
       sessions,
       usersService,
     };
@@ -112,6 +113,16 @@ describe('AuthService', () => {
         response as never,
       ),
     ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('maps invalid refresh token to unauthorized response', async () => {
+    const { service, response, jwt, sessions } = createService();
+    jwt.verifyAsync.mockRejectedValue(new Error('jwt malformed'));
+
+    await expect(
+      service.refresh('broken-token', response as never),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(sessions.getRefreshSession).not.toHaveBeenCalled();
   });
 
   it('clears refresh session on logout', async () => {

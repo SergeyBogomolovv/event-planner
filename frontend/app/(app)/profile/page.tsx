@@ -1,18 +1,23 @@
-import { ProfileForm } from "@/components/profile-form";
-import { getProfile } from "@/lib/server-api";
+import { ProfileForm } from '@/components/profile-form'
+import { PageHero } from '@/components/page-hero'
+import { Card, CardContent } from '@/components/ui/card'
+import { getProfile } from '@/lib/server-api'
 
 export default async function ProfilePage() {
-  const user = await getProfile();
+  const user = await getProfile()
 
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-6">
-      <h1 className="text-2xl font-semibold">Профиль</h1>
-      <p className="mt-2 text-sm text-zinc-600">
-        Обновите имя и email, которые будут видны в вашем кабинете.
-      </p>
-      <div className="mt-6">
-        <ProfileForm user={user} />
-      </div>
+    <div className='space-y-6'>
+      <PageHero
+        eyebrow='Профиль'
+        title='Контактные данные'
+        description='Обновите имя и email, которые будут видны в вашем кабинете.'
+      />
+      <Card className='py-0 shadow-sm'>
+        <CardContent className='p-6'>
+          <ProfileForm user={user} />
+        </CardContent>
+      </Card>
     </div>
-  );
+  )
 }

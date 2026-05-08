@@ -1,27 +1,53 @@
-import { API_BASE_URL } from "./api-config";
+import { API_BASE_URL } from './api-config'
 
 export type CurrentUser = {
-  id: string;
-  email: string;
-  name: string;
-  role: "user" | "admin";
-  status: "active" | "blocked";
-};
+  id: string
+  email: string
+  name: string
+  role: 'user' | 'admin'
+  status: 'active' | 'blocked'
+}
+
+export type EventStatus = 'draft' | 'active' | 'cancelled' | 'completed'
+export type EventFormat = 'offline' | 'online' | 'hybrid'
+export type EventAction = 'edit' | 'publish' | 'cancel' | 'complete' | 'delete'
+
+export type EventItem = {
+  id: string
+  title: string
+  description: string
+  startsAt: string
+  endsAt: string | null
+  location: string | null
+  format: EventFormat
+  participantLimit: number | null
+  status: EventStatus
+  organizer: CurrentUser
+  relation: {
+    isOrganizer: boolean
+    isInvited: boolean
+    isParticipant: boolean
+    isAdmin: boolean
+  }
+  availableActions: EventAction[]
+  createdAt: string
+  updatedAt: string
+}
 
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
-    credentials: "include",
+    credentials: 'include',
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
       ...init.headers,
     },
-  });
+  })
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(error || `API request failed: ${response.status}`);
+    const error = await response.text()
+    throw new Error(error || `API request failed: ${response.status}`)
   }
 
-  return response.json() as Promise<T>;
+  return response.json() as Promise<T>
 }

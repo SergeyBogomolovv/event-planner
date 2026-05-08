@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { API_BASE_URL } from './api-config'
-import type { CurrentUser } from './api'
+import type { CurrentUser, EventItem } from './api'
 
 type ServerApiOptions = {
   redirectToLogin?: boolean
@@ -37,6 +37,18 @@ export function getCurrentUser() {
 
 export function getProfile() {
   return serverApiRequest<CurrentUser>('/users/me', {}, { redirectToLogin: true })
+}
+
+export function getMyEvents() {
+  return serverApiRequest<EventItem[]>('/events/my', {}, { redirectToLogin: true })
+}
+
+export function getParticipatingEvents() {
+  return serverApiRequest<EventItem[]>('/events/participating', {}, { redirectToLogin: true })
+}
+
+export function getEvent(eventId: string) {
+  return serverApiRequest<EventItem>(`/events/${eventId}`, {}, { redirectToLogin: true })
 }
 
 async function getCookieHeader() {

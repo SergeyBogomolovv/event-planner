@@ -1,4 +1,7 @@
 import { CalendarPlus, Inbox, Sparkles } from 'lucide-react'
+import Link from 'next/link'
+import { PageHero } from '@/components/page-hero'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { getCurrentUser } from '@/lib/server-api'
 
 export default async function DashboardPage() {
@@ -6,26 +9,30 @@ export default async function DashboardPage() {
 
   return (
     <div className='space-y-6'>
-      <section className='rounded-xl bg-zinc-950 p-8 text-white'>
-        <p className='text-sm uppercase tracking-[0.3em] text-emerald-300'>Dashboard</p>
-        <h1 className='mt-4 text-3xl font-semibold'>Здравствуйте, {user.name}</h1>
-        <p className='mt-3 max-w-2xl text-zinc-300'>
-          Здесь будет собрана ваша рабочая сводка: созданные мероприятия, приглашения и последние
-          изменения.
-        </p>
-      </section>
+      <PageHero
+        icon={Sparkles}
+        eyebrow='Сегодня'
+        title={`Здравствуйте, ${user.name}`}
+        description='Быстрый доступ к событиям, черновикам и профилю. Начните с нового мероприятия или вернитесь к текущим.'
+      />
 
       <div className='grid gap-4 md:grid-cols-3'>
         {[
-          [CalendarPlus, 'Мои мероприятия', 'Создавайте и ведите закрытые события'],
-          [Inbox, 'Приглашения', 'Отвечайте на входящие приглашения'],
-          [Sparkles, 'Уведомления', 'Следите за важными изменениями'],
-        ].map(([Icon, title, text]) => (
-          <div key={String(title)} className='rounded-lg border border-zinc-200 bg-white p-5'>
-            <Icon className='h-5 w-5' />
-            <h2 className='mt-4 font-semibold'>{String(title)}</h2>
-            <p className='mt-2 text-sm text-zinc-600'>{String(text)}</p>
-          </div>
+          [CalendarPlus, 'Мои мероприятия', 'Создавайте и ведите закрытые события', '/events/my'],
+          [Inbox, 'Создать событие', 'Подготовьте черновик и опубликуйте его, когда всё готово', '/events/new'],
+          [Sparkles, 'Профиль', 'Держите контактные данные в актуальном состоянии', '/profile'],
+        ].map(([Icon, title, text, href]) => (
+          <Card key={String(title)} className='py-0 transition-colors hover:ring-teal-300'>
+            <Link href={String(href)} className='block p-5'>
+              <CardHeader className='p-0'>
+                <span className='grid size-10 place-items-center rounded-lg bg-muted text-muted-foreground'>
+                  <Icon className='h-5 w-5' />
+                </span>
+                <CardTitle className='mt-4'>{String(title)}</CardTitle>
+              </CardHeader>
+              <CardContent className='p-0 pt-2 text-sm text-muted-foreground'>{String(text)}</CardContent>
+            </Link>
+          </Card>
         ))}
       </div>
     </div>
