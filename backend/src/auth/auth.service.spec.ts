@@ -1,7 +1,12 @@
 import { UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
-import { UserRole, UserStatus } from '../users/user.entity';
+import type { SafeUser } from '../users/safe-user.type';
+import { User, UserRole, UserStatus } from '../users/user.entity';
+
+type JwtOptions = {
+  expiresIn?: string;
+};
 
 jest.mock('bcrypt', () => ({
   compare: jest.fn(),
@@ -11,7 +16,7 @@ jest.mock('bcrypt', () => ({
 describe('AuthService', () => {
   function createService() {
     const config = {
-      get: jest.fn((key: string) => {
+      get: jest.fn((key: string): string | boolean | undefined => {
         const values: Record<string, string | boolean> = {
           JWT_ACCESS_SECRET: 'access',
           JWT_REFRESH_SECRET: 'refresh',
@@ -21,35 +26,41 @@ describe('AuthService', () => {
       }),
     };
     const jwt = {
-      signAsync: jest.fn(async (_payload, options) =>
-        options.expiresIn === '15m' ? 'access-token' : 'refresh-token',
+      signAsync: jest.fn((_payload: object, options: JwtOptions) =>
+        Promise.resolve(
+          options.expiresIn === '15m' ? 'access-token' : 'refresh-token',
+        ),
       ),
-      verifyAsync: jest.fn(async () => ({ sub: 'user-1' })),
+      verifyAsync: jest.fn(() => Promise.resolve({ sub: 'user-1' })),
     };
     const sessions = {
       setRefreshSession: jest.fn(),
-      getRefreshSession: jest.fn(async () => 'refresh-token'),
+      getRefreshSession: jest.fn(() => Promise.resolve('refresh-token')),
       deleteRefreshSession: jest.fn(),
     };
-    const user = {
+    const user: User = {
       id: 'user-1',
       email: 'ada@example.com',
       name: 'Ada',
       passwordHash: 'hash',
       role: UserRole.User,
       status: UserStatus.Active,
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+      updatedAt: new Date('2026-01-01T00:00:00Z'),
     };
     const usersService = {
-      create: jest.fn(async () => user),
-      findByEmail: jest.fn(async () => user),
-      requireActiveById: jest.fn(async () => user),
-      toSafeUser: jest.fn((input) => ({
-        id: input.id,
-        email: input.email,
-        name: input.name,
-        role: input.role,
-        status: input.status,
-      })),
+      create: jest.fn(() => Promise.resolve(user)),
+      findByEmail: jest.fn(() => Promise.resolve(user)),
+      requireActiveById: jest.fn(() => Promise.resolve(user)),
+      toSafeUser: jest.fn(
+        (input: User): SafeUser => ({
+          id: input.id,
+          email: input.email,
+          name: input.name,
+          role: input.role,
+          status: input.status,
+        }),
+      ),
     };
     const response = {
       cookie: jest.fn(),
@@ -57,7 +68,12 @@ describe('AuthService', () => {
     };
 
     return {
-      service: new AuthService(config as never, jwt as never, sessions as never, usersService as never),
+      service: new AuthService(
+        config as never,
+        jwt as never,
+        sessions as never,
+        usersService as never,
+      ),
       response,
       sessions,
       usersService,
@@ -91,7 +107,10 @@ describe('AuthService', () => {
     const { service, response } = createService();
 
     await expect(
-      service.login({ email: 'ada@example.com', password: 'wrong-password' }, response as never),
+      service.login(
+        { email: 'ada@example.com', password: 'wrong-password' },
+        response as never,
+      ),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
@@ -110,7 +129,11 @@ describe('AuthService', () => {
     );
 
     expect(sessions.deleteRefreshSession).toHaveBeenCalledWith('user-1');
-    expect(response.clearCookie).toHaveBeenCalledWith('access_token', { path: '/' });
-    expect(response.clearCookie).toHaveBeenCalledWith('refresh_token', { path: '/' });
+    expect(response.clearCookie).toHaveBeenCalledWith('access_token', {
+      path: '/',
+    });
+    expect(response.clearCookie).toHaveBeenCalledWith('refresh_token', {
+      path: '/',
+    });
   });
 });
