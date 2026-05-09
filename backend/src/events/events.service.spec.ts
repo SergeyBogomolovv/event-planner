@@ -1,5 +1,9 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import type { Repository } from 'typeorm';
+import {
+  EventParticipant,
+  EventParticipantStatus,
+} from '../participants/event-participant.entity';
 import { User, UserRole, UserStatus } from '../users/user.entity';
 import { Event, EventFormat, EventStatus } from './event.entity';
 import { EventsService } from './events.service';
@@ -31,6 +35,7 @@ const otherUser: User = {
 describe('EventsService', () => {
   function createService(initialEvents: Event[] = []) {
     const store = [...initialEvents];
+    const participantStore: EventParticipant[] = [];
     const repo = {
       create: jest.fn((data: Partial<Event>): Event => data as Event),
       save: jest.fn((event: Event): Promise<Event> => {
@@ -74,10 +79,38 @@ describe('EventsService', () => {
         return Promise.resolve(event);
       }),
     };
+    const participantsRepo = {
+      find: jest.fn(({ where }: { where: Partial<EventParticipant> }) =>
+        Promise.resolve(
+          participantStore.filter((participant) =>
+            Object.entries(where).every(([key, value]) => {
+              if (key === 'event') {
+                return participant.event.deletedAt === null;
+              }
+              return participant[key as keyof EventParticipant] === value;
+            }),
+          ),
+        ),
+      ),
+      findOne: jest.fn(({ where }: { where: Partial<EventParticipant> }) =>
+        Promise.resolve(
+          participantStore.find((participant) =>
+            Object.entries(where).every(
+              ([key, value]) =>
+                participant[key as keyof EventParticipant] === value,
+            ),
+          ) ?? null,
+        ),
+      ),
+    };
     return {
-      service: new EventsService(repo as unknown as Repository<Event>),
+      service: new EventsService(
+        repo as unknown as Repository<Event>,
+        participantsRepo as unknown as Repository<EventParticipant>,
+      ),
       repo,
       store,
+      participantStore,
     };
   }
 
@@ -111,6 +144,33 @@ describe('EventsService', () => {
 
     expect(events).toHaveLength(1);
     expect(events[0].id).toBe('mine');
+  });
+
+  it('includes organized events in participating list', async () => {
+    const organized = createEvent({ id: 'organized' });
+    const acceptedEvent = createEvent({
+      id: 'accepted',
+      organizerId: otherUser.id,
+      organizer: otherUser,
+      startsAt: new Date('2026-06-02T10:00:00.000Z'),
+    });
+    const { service, participantStore } = createService([
+      organized,
+      acceptedEvent,
+    ]);
+    participantStore.push(
+      createParticipant({
+        eventId: acceptedEvent.id,
+        event: acceptedEvent,
+        userId: organizerUser.id,
+        user: organizerUser,
+        status: EventParticipantStatus.Accepted,
+      }),
+    );
+
+    const events = await service.findParticipating(organizerUser);
+
+    expect(events.map((event) => event.id)).toEqual(['organized', 'accepted']);
   });
 
   it('prevents non-organizer from editing', async () => {
@@ -196,6 +256,27 @@ function createEvent(overrides: Partial<Event> = {}): Event {
     createdAt: now,
     updatedAt: now,
     deletedAt: null,
+    ...overrides,
+  };
+}
+
+function createParticipant(
+  overrides: Partial<EventParticipant> = {},
+): EventParticipant {
+  return {
+    id: 'participant-1',
+    eventId: 'event-1',
+    event: createEvent(),
+    userId: otherUser.id,
+    user: otherUser,
+    status: EventParticipantStatus.Invited,
+    invitedById: organizerUser.id,
+    invitedBy: organizerUser,
+    invitedAt: now,
+    respondedAt: null,
+    removedAt: null,
+    createdAt: now,
+    updatedAt: now,
     ...overrides,
   };
 }

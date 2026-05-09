@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 import { UpdateProfileDto } from './dto';
 import { User, UserRole, UserStatus } from './user.entity';
 
@@ -76,6 +76,32 @@ export class UsersService {
     }
 
     return this.users.save(user);
+  }
+
+  search(params: { query: string; limit?: number; excludeUserId: string }) {
+    const normalizedQuery = params.query.trim().toLowerCase();
+    const limit = params.limit ?? 10;
+
+    return this.users
+      .createQueryBuilder('user')
+      .where('user.status = :status', { status: UserStatus.Active })
+      .andWhere('user.id != :excludeUserId', {
+        excludeUserId: params.excludeUserId,
+      })
+      .andWhere(
+        new Brackets((queryBuilder) => {
+          queryBuilder
+            .where('LOWER(user.name) LIKE :query', {
+              query: `%${normalizedQuery}%`,
+            })
+            .orWhere('LOWER(user.email) LIKE :query', {
+              query: `%${normalizedQuery}%`,
+            });
+        }),
+      )
+      .orderBy('user.name', 'ASC')
+      .limit(limit)
+      .getMany();
   }
 
   private normalizeEmail(email: string): string {

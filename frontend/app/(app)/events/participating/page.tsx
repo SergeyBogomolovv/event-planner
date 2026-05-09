@@ -14,7 +14,6 @@ export default async function ParticipatingEventsPage() {
         eyebrow='Участие'
         title='Я участвую'
         description='Здесь собраны мероприятия, где вы подтвердили участие.'
-        className='bg-white text-zinc-950 ring-1 ring-border [&_p]:text-muted-foreground'
       />
 
       {events.length ? (

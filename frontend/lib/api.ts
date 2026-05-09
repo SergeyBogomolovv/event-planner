@@ -11,6 +11,7 @@ export type CurrentUser = {
 export type EventStatus = 'draft' | 'active' | 'cancelled' | 'completed'
 export type EventFormat = 'offline' | 'online' | 'hybrid'
 export type EventAction = 'edit' | 'publish' | 'cancel' | 'complete' | 'delete'
+export type ParticipantStatus = 'invited' | 'accepted' | 'declined' | 'removed'
 
 export type EventItem = {
   id: string
@@ -30,6 +31,30 @@ export type EventItem = {
     isAdmin: boolean
   }
   availableActions: EventAction[]
+  createdAt: string
+  updatedAt: string
+}
+
+export type ParticipantItem = {
+  id: string
+  role: 'organizer' | 'participant'
+  status: ParticipantStatus | 'accepted'
+  user: CurrentUser
+  invitedBy: CurrentUser | null
+  invitedAt: string | null
+  respondedAt: string | null
+  removedAt: string | null
+  createdAt: string | null
+  updatedAt: string | null
+}
+
+export type InvitationItem = {
+  id: string
+  status: ParticipantStatus
+  event: EventItem
+  invitedBy: CurrentUser
+  invitedAt: string
+  respondedAt: string | null
   createdAt: string
   updatedAt: string
 }

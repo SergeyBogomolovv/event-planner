@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { EventParticipantStatus } from '../participants/event-participant.entity';
 import { User } from '../users/user.entity';
 import { CreateEventDto, UpdateEventDto } from './dto';
 import { EventResponseDto } from './event-response.dto';
@@ -33,16 +34,22 @@ export class EventsController {
   }
 
   @Get('participating')
-  findParticipating(@CurrentUser() user: User) {
-    return this.eventsService
-      .findParticipating(user)
-      .map((event) => new EventResponseDto(event, user));
+  async findParticipating(@CurrentUser() user: User) {
+    const events = await this.eventsService.findParticipating(user);
+    return events.map(
+      (event) =>
+        new EventResponseDto(event, user, EventParticipantStatus.Accepted),
+    );
   }
 
   @Get(':eventId')
   async findOne(@Param('eventId') eventId: string, @CurrentUser() user: User) {
     const event = await this.eventsService.findOne(eventId, user);
-    return new EventResponseDto(event, user);
+    const participant = await this.eventsService.getParticipantStatus(
+      eventId,
+      user,
+    );
+    return new EventResponseDto(event, user, participant?.status ?? null);
   }
 
   @Patch(':eventId')

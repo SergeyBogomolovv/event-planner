@@ -1,8 +1,10 @@
 import { CalendarDays, MapPin, UsersRound } from 'lucide-react'
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { EventActions } from '@/components/event-actions'
 import { PageHero } from '@/components/page-hero'
 import { Badge } from '@/components/ui/badge'
+import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { eventFormatLabels, eventStatusLabels, formatEventDate } from '@/lib/event-labels'
 import { getEvent } from '@/lib/server-api'
@@ -61,6 +63,16 @@ export default async function EventPage({ params }: EventPageProps) {
           <div className='mt-5 flex flex-wrap gap-2'>
             <Badge variant='outline'>{event.relation.isOrganizer ? 'Вы организатор' : 'Просмотр'}</Badge>
             <Badge variant='secondary'>{eventFormatLabels[event.format]}</Badge>
+          </div>
+          <div className='mt-5 flex flex-wrap gap-2'>
+            <Link href={`/events/${event.id}/participants`} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+              Участники
+            </Link>
+            {event.relation.isOrganizer ? (
+              <Link href={`/events/${event.id}/participants/manage`} className={buttonVariants({ size: 'sm' })}>
+                Управлять
+              </Link>
+            ) : null}
           </div>
           </CardContent>
         </Card>

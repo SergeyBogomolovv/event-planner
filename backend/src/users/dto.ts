@@ -3,9 +3,12 @@ import type { TransformFnParams } from 'class-transformer';
 import {
   IsEmail,
   IsNotEmpty,
+  IsInt,
   IsOptional,
   IsString,
   MaxLength,
+  Min,
+  Max,
   MinLength,
 } from 'class-validator';
 
@@ -43,4 +46,21 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsEmail()
   email?: string;
+}
+
+export class SearchUsersDto {
+  @Transform(trimString)
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(120)
+  q: string;
+
+  @Transform(({ value }: TransformFnParams) =>
+    value === undefined ? 10 : Number(value),
+  )
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(20)
+  limit?: number;
 }

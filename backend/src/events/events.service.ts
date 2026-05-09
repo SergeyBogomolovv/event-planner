@@ -5,7 +5,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
+import {
+  EventParticipant,
+  EventParticipantStatus,
+} from '../participants/event-participant.entity';
 import { User, UserRole } from '../users/user.entity';
 import { CreateEventDto, UpdateEventDto } from './dto';
 import { Event, EventStatus } from './event.entity';
@@ -20,6 +24,8 @@ export class EventsService {
   constructor(
     @InjectRepository(Event)
     private readonly events: Repository<Event>,
+    @InjectRepository(EventParticipant)
+    private readonly participants: Repository<EventParticipant>,
   ) {}
 
   async create(dto: CreateEventDto, user: User): Promise<Event> {
@@ -49,15 +55,45 @@ export class EventsService {
     });
   }
 
-  findParticipating(user: User): Event[] {
-    void user;
-    return [];
+  async findParticipating(user: User): Promise<Event[]> {
+    const organizedEvents = await this.events.find({
+      where: { organizerId: user.id, deletedAt: IsNull() },
+      order: { startsAt: 'ASC', createdAt: 'DESC' },
+    });
+    const participants = await this.participants.find({
+      where: {
+        userId: user.id,
+        status: EventParticipantStatus.Accepted,
+        event: { deletedAt: IsNull() },
+      },
+      order: { event: { startsAt: 'ASC' } },
+    });
+
+    const eventsById = new Map<string, Event>();
+    for (const event of organizedEvents) {
+      eventsById.set(event.id, event);
+    }
+    for (const participant of participants) {
+      eventsById.set(participant.event.id, participant.event);
+    }
+
+    return [...eventsById.values()].sort(
+      (left, right) =>
+        left.startsAt.getTime() - right.startsAt.getTime() ||
+        right.createdAt.getTime() - left.createdAt.getTime(),
+    );
   }
 
   async findOne(id: string, user: User): Promise<Event> {
     const event = await this.requireEvent(id);
-    this.assertCanView(event, user);
+    await this.assertCanView(event, user);
     return event;
+  }
+
+  getParticipantStatus(eventId: string, user: User) {
+    return this.participants.findOne({
+      where: { eventId, userId: user.id },
+    });
   }
 
   async update(id: string, dto: UpdateEventDto, user: User): Promise<Event> {
@@ -129,8 +165,21 @@ export class EventsService {
     return event;
   }
 
-  private assertCanView(event: Event, user: User): void {
+  private async assertCanView(event: Event, user: User): Promise<void> {
     if (this.isOrganizer(event, user) || user.role === UserRole.Admin) {
+      return;
+    }
+    const participant = await this.participants.findOne({
+      where: {
+        eventId: event.id,
+        userId: user.id,
+        status: In([
+          EventParticipantStatus.Invited,
+          EventParticipantStatus.Accepted,
+        ]),
+      },
+    });
+    if (participant) {
       return;
     }
     throw new ForbiddenException('You do not have access to this event');

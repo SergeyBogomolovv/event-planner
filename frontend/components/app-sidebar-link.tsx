@@ -2,7 +2,15 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { CalendarDays, LayoutDashboard, PlusCircle, UserRound, type LucideIcon } from 'lucide-react'
+import {
+  CalendarDays,
+  LayoutDashboard,
+  MailOpen,
+  PlusCircle,
+  UserRound,
+  UsersRound,
+  type LucideIcon,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type AppSidebarLinkProps = {
@@ -32,6 +40,8 @@ export function AppSidebarLink({ href, icon: Icon, label }: AppSidebarLinkProps)
 const navigationItems: AppSidebarLinkProps[] = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Кабинет' },
   { href: '/events/my', icon: CalendarDays, label: 'Мои мероприятия' },
+  { href: '/invitations', icon: MailOpen, label: 'Приглашения' },
+  { href: '/events/participating', icon: UsersRound, label: 'Я участвую' },
   { href: '/events/new', icon: PlusCircle, label: 'Создать' },
   { href: '/profile', icon: UserRound, label: 'Профиль' },
 ]

@@ -1,3 +1,4 @@
+import { EventParticipantStatus } from '../participants/event-participant.entity';
 import { User, UserRole } from '../users/user.entity';
 import { UserResponseDto } from '../users/user-response.dto';
 import { Event, EventFormat, EventStatus } from './event.entity';
@@ -25,7 +26,11 @@ export class EventResponseDto {
   createdAt: Date;
   updatedAt: Date;
 
-  constructor(event: Event, currentUser: User) {
+  constructor(
+    event: Event,
+    currentUser: User,
+    participantStatus?: EventParticipantStatus | null,
+  ) {
     const isOrganizer = event.organizerId === currentUser.id;
     const isAdmin = currentUser.role === UserRole.Admin;
 
@@ -41,8 +46,8 @@ export class EventResponseDto {
     this.organizer = new UserResponseDto(event.organizer);
     this.relation = {
       isOrganizer,
-      isInvited: false,
-      isParticipant: false,
+      isInvited: participantStatus === EventParticipantStatus.Invited,
+      isParticipant: participantStatus === EventParticipantStatus.Accepted,
       isAdmin,
     };
     this.availableActions = this.getAvailableActions(

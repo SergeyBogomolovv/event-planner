@@ -1,7 +1,7 @@
-import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Query, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { UpdateProfileDto } from './dto';
+import { SearchUsersDto, UpdateProfileDto } from './dto';
 import { User } from './user.entity';
 import { UserResponseDto } from './user-response.dto';
 import { UsersService } from './users.service';
@@ -20,5 +20,15 @@ export class UsersController {
   async updateMe(@CurrentUser() user: User, @Body() dto: UpdateProfileDto) {
     const updatedUser = await this.usersService.updateProfile(user.id, dto);
     return new UserResponseDto(updatedUser);
+  }
+
+  @Get('search')
+  async search(@CurrentUser() user: User, @Query() dto: SearchUsersDto) {
+    const users = await this.usersService.search({
+      query: dto.q,
+      limit: dto.limit,
+      excludeUserId: user.id,
+    });
+    return users.map((foundUser) => new UserResponseDto(foundUser));
   }
 }

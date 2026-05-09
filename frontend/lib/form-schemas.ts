@@ -50,6 +50,11 @@ export const eventFormSchema = z
     }
   })
 
+export const userSearchSchema = z.object({
+  query: z.string().trim().min(2, 'Введите минимум 2 символа').max(120, 'Слишком длинный запрос'),
+})
+
 export type AuthFormValues = z.infer<typeof registerSchema>
 export type ProfileFormValues = z.infer<typeof profileSchema>
 export type EventFormValues = z.infer<typeof eventFormSchema>
+export type UserSearchFormValues = z.infer<typeof userSearchSchema>

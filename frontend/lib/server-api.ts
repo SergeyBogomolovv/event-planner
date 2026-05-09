@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { API_BASE_URL } from './api-config'
-import type { CurrentUser, EventItem } from './api'
+import type { CurrentUser, EventItem, InvitationItem, ParticipantItem } from './api'
 
 type ServerApiOptions = {
   redirectToLogin?: boolean
@@ -49,6 +49,22 @@ export function getParticipatingEvents() {
 
 export function getEvent(eventId: string) {
   return serverApiRequest<EventItem>(`/events/${eventId}`, {}, { redirectToLogin: true })
+}
+
+export function getInvitations() {
+  return serverApiRequest<InvitationItem[]>('/invitations', {}, { redirectToLogin: true })
+}
+
+export function getParticipants(eventId: string) {
+  return serverApiRequest<ParticipantItem[]>(`/events/${eventId}/participants`, {}, { redirectToLogin: true })
+}
+
+export function getManageParticipants(eventId: string) {
+  return serverApiRequest<ParticipantItem[]>(
+    `/events/${eventId}/participants/manage`,
+    {},
+    { redirectToLogin: true },
+  )
 }
 
 async function getCookieHeader() {

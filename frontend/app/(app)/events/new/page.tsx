@@ -8,7 +8,6 @@ export default function NewEventPage() {
         eyebrow='Новое мероприятие'
         title='Создать черновик'
         description='Укажите основные детали. После создания мероприятие можно будет открыть, изменить или опубликовать.'
-        className='bg-white text-zinc-950 ring-1 ring-border [&_p]:text-muted-foreground'
       />
       <EventForm mode='create' />
     </div>

@@ -36,7 +36,6 @@ export default async function EditEventPage({ params }: EditEventPageProps) {
         eyebrow='Редактирование'
         title={event.title}
         description='Обновите детали мероприятия и сохраните изменения.'
-        className='bg-white text-zinc-950 ring-1 ring-border [&_p]:text-muted-foreground'
       />
       <EventForm event={event} mode='edit' />
     </div>
