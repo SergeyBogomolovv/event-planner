@@ -43,6 +43,15 @@ export class NotificationsService {
     return this.hideInaccessibleRelatedEvents(notifications, user);
   }
 
+  async findUnreadLatest(user: User, take = 5): Promise<Notification[]> {
+    const notifications = await this.notifications.find({
+      where: { userId: user.id, readAt: IsNull() },
+      order: { createdAt: 'DESC' },
+      take,
+    });
+    return this.hideInaccessibleRelatedEvents(notifications, user);
+  }
+
   countUnread(user: User): Promise<number> {
     return this.notifications.count({
       where: {

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { API_BASE_URL } from './api-config'
 import type {
   CurrentUser,
+  DashboardItem,
   EventItem,
   InvitationItem,
   NotificationItem,
@@ -43,6 +44,10 @@ export function getCurrentUser() {
 
 export function getProfile() {
   return serverApiRequest<CurrentUser>('/users/me', {}, { redirectToLogin: true })
+}
+
+export function getDashboard() {
+  return serverApiRequest<DashboardItem>('/dashboard', {}, { redirectToLogin: true })
 }
 
 export function getMyEvents() {

@@ -11,6 +11,7 @@ import { EventsModule } from './events/events.module';
 import { ParticipantsModule } from './participants/participants.module';
 import { MailModule } from './mail/mail.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     ParticipantsModule,
     MailModule,
     NotificationsModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],

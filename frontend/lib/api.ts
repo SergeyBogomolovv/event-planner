@@ -76,6 +76,20 @@ export type NotificationItem = {
   createdAt: string
 }
 
+export type DashboardItem = {
+  counts: {
+    createdEvents: number
+    participatingEvents: number
+    pendingInvitations: number
+    unreadNotifications: number
+  }
+  upcomingEvents: EventItem[]
+  createdEvents: EventItem[]
+  participatingEvents: EventItem[]
+  pendingInvitations: InvitationItem[]
+  unreadNotifications: NotificationItem[]
+}
+
 export class ApiRequestError extends Error {
   constructor(
     message: string,
