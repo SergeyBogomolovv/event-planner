@@ -12,6 +12,7 @@ import { ParticipantsModule } from './participants/participants.module';
 import { MailModule } from './mail/mail.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     MailModule,
     NotificationsModule,
     DashboardModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],

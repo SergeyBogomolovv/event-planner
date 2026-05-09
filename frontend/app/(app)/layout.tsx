@@ -27,7 +27,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </span>
             <span>Event Planner</span>
           </Link>
-          <AppSidebarNav unreadNotificationsCount={unreadNotificationsCount} />
+          <AppSidebarNav
+            unreadNotificationsCount={unreadNotificationsCount}
+            isAdmin={user.role === 'admin'}
+          />
 
           <Separator className='my-6' />
           <div className='rounded-xl bg-muted/70 p-4 text-sm ring-1 ring-border'>

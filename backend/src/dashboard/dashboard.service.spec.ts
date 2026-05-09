@@ -146,7 +146,7 @@ function createEvent(overrides: Partial<Event> = {}): Event {
     createdAt: now,
     updatedAt: now,
     ...overrides,
-  } as Event;
+  };
 }
 
 function createParticipant(

@@ -2,11 +2,14 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { API_BASE_URL } from './api-config'
 import type {
+  AdminEventItem,
+  AdminStats,
   CurrentUser,
   DashboardItem,
   EventItem,
   InvitationItem,
   NotificationItem,
+  PaginatedResponse,
   ParticipantItem,
 } from './api'
 
@@ -93,6 +96,32 @@ export async function getUnreadNotificationsCount() {
     { redirectToLogin: true },
   )
   return response.count
+}
+
+export function getAdminStats() {
+  return serverApiRequest<AdminStats>('/admin/stats', {}, { redirectToLogin: true })
+}
+
+export function getAdminUsers(params: { page: number; limit: number }) {
+  return serverApiRequest<PaginatedResponse<CurrentUser>>(
+    `/admin/users?${toSearchParams(params)}`,
+    {},
+    { redirectToLogin: true },
+  )
+}
+
+export function getAdminEvents(params: { page: number; limit: number }) {
+  return serverApiRequest<PaginatedResponse<AdminEventItem>>(
+    `/admin/events?${toSearchParams(params)}`,
+    {},
+    { redirectToLogin: true },
+  )
+}
+
+function toSearchParams(params: Record<string, string | number>) {
+  return new URLSearchParams(
+    Object.entries(params).map(([key, value]) => [key, String(value)]),
+  ).toString()
 }
 
 async function getCookieHeader() {

@@ -8,6 +8,7 @@ import {
   MailOpen,
   Bell,
   PlusCircle,
+  ShieldCheck,
   UserRound,
   UsersRound,
   type LucideIcon,
@@ -61,14 +62,23 @@ const navigationItems: AppSidebarLinkProps[] = [
   { href: '/profile', icon: UserRound, label: 'Профиль' },
 ]
 
-type AppSidebarNavProps = {
-  unreadNotificationsCount?: number
+const adminNavigationItem: AppSidebarLinkProps = {
+  href: '/admin',
+  icon: ShieldCheck,
+  label: 'Администрирование',
 }
 
-export function AppSidebarNav({ unreadNotificationsCount = 0 }: AppSidebarNavProps) {
+type AppSidebarNavProps = {
+  unreadNotificationsCount?: number
+  isAdmin?: boolean
+}
+
+export function AppSidebarNav({ unreadNotificationsCount = 0, isAdmin = false }: AppSidebarNavProps) {
+  const items = isAdmin ? [...navigationItems, adminNavigationItem] : navigationItems
+
   return (
     <nav className='mt-8 space-y-1'>
-      {navigationItems.map((item) => (
+      {items.map((item) => (
         <AppSidebarLink
           key={item.href}
           {...item}

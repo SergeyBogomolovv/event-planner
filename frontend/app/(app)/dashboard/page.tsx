@@ -26,7 +26,8 @@ export default async function DashboardPage() {
           <Link
             href='/events/new'
             className={buttonVariants({
-              className: 'bg-teal-300 text-zinc-950 hover:bg-teal-200',
+              className:
+                '!bg-teal-300 !text-zinc-950 hover:!bg-white hover:!text-zinc-950',
             })}
           >
             <CalendarPlus className='h-4 w-4' />

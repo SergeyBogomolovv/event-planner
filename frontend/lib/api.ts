@@ -6,6 +6,8 @@ export type CurrentUser = {
   name: string
   role: 'user' | 'admin'
   status: 'active' | 'blocked'
+  createdAt: string
+  updatedAt: string
 }
 
 export type EventStatus = 'draft' | 'active' | 'cancelled' | 'completed'
@@ -88,6 +90,34 @@ export type DashboardItem = {
   participatingEvents: EventItem[]
   pendingInvitations: InvitationItem[]
   unreadNotifications: NotificationItem[]
+}
+
+export type AdminStats = {
+  users: {
+    total: number
+    byRole: Record<CurrentUser['role'], number>
+    byStatus: Record<CurrentUser['status'], number>
+  }
+  events: {
+    total: number
+    byStatus: Record<EventStatus, number>
+  }
+  participants: {
+    total: number
+    byStatus: Record<ParticipantStatus, number>
+  }
+}
+
+export type AdminEventItem = EventItem & {
+  participantCount: number
+}
+
+export type PaginatedResponse<T> = {
+  items: T[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
 }
 
 export class ApiRequestError extends Error {
