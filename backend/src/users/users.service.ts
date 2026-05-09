@@ -36,7 +36,11 @@ export class UsersService {
   }
 
   findByEmail(email: string) {
-    return this.users.findOne({ where: { email: this.normalizeEmail(email) } });
+    return this.users
+      .createQueryBuilder('user')
+      .addSelect('user.passwordHash')
+      .where('user.email = :email', { email: this.normalizeEmail(email) })
+      .getOne();
   }
 
   findById(id: string) {

@@ -16,7 +16,11 @@ import {
   AdminUserResponseDto,
   PaginatedResponseDto,
 } from './admin-response.dto';
-import { AdminService } from './admin.service';
+import {
+  AdminEventListItem,
+  AdminService,
+  PaginatedResult,
+} from './admin.service';
 import { AdminListQueryDto } from './dto';
 
 @UseGuards(JwtAuthGuard, AdminGuard)
@@ -25,15 +29,18 @@ export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   @Get('stats')
-  async getStats() {
+  async getStats(): Promise<AdminStatsResponseDto> {
     const stats = await this.adminService.getStats();
     return new AdminStatsResponseDto(stats);
   }
 
   @Get('users')
-  async findUsers(@Query() query: AdminListQueryDto) {
-    const users = await this.adminService.findUsers(query);
-    return new PaginatedResponseDto(
+  async findUsers(
+    @Query() query: AdminListQueryDto,
+  ): Promise<PaginatedResponseDto<AdminUserResponseDto>> {
+    const users: PaginatedResult<User> =
+      await this.adminService.findUsers(query);
+    return new PaginatedResponseDto<AdminUserResponseDto>(
       users,
       users.items.map((user) => new AdminUserResponseDto(user)),
     );
@@ -43,13 +50,15 @@ export class AdminController {
   async blockUser(
     @Param('userId') userId: string,
     @CurrentUser() currentUser: User,
-  ) {
+  ): Promise<AdminUserResponseDto> {
     const user = await this.adminService.blockUser(userId, currentUser);
     return new AdminUserResponseDto(user);
   }
 
   @Patch('users/:userId/unblock')
-  async unblockUser(@Param('userId') userId: string) {
+  async unblockUser(
+    @Param('userId') userId: string,
+  ): Promise<AdminUserResponseDto> {
     const user = await this.adminService.unblockUser(userId);
     return new AdminUserResponseDto(user);
   }
@@ -58,9 +67,10 @@ export class AdminController {
   async findEvents(
     @CurrentUser() currentUser: User,
     @Query() query: AdminListQueryDto,
-  ) {
-    const events = await this.adminService.findEvents(query);
-    return new PaginatedResponseDto(
+  ): Promise<PaginatedResponseDto<AdminEventResponseDto>> {
+    const events: PaginatedResult<AdminEventListItem> =
+      await this.adminService.findEvents(query);
+    return new PaginatedResponseDto<AdminEventResponseDto>(
       events,
       events.items.map(
         (event) => new AdminEventResponseDto(event, currentUser),

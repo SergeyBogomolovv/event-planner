@@ -4,6 +4,12 @@ import { User, UserRole, UserStatus } from './user.entity';
 
 const testDate = new Date('2026-01-01T00:00:00Z');
 
+type UserQueryBuilderMock = {
+  addSelect: jest.Mock<UserQueryBuilderMock, [string]>;
+  where: jest.Mock<UserQueryBuilderMock, [string, Record<string, string>]>;
+  getOne: jest.Mock<Promise<User | null>, []>;
+};
+
 describe('UsersService', () => {
   function createService(existingUsers: User[] = []) {
     const store = [...existingUsers];
@@ -17,6 +23,23 @@ describe('UsersService', () => {
           ) ?? null,
         ),
       ),
+      createQueryBuilder: jest.fn((): UserQueryBuilderMock => {
+        const query: UserQueryBuilderMock = {
+          addSelect: jest.fn((select: string) => {
+            void select;
+            return query;
+          }),
+          where: jest.fn(
+            (condition: string, parameters: Record<string, string>) => {
+              void condition;
+              void parameters;
+              return query;
+            },
+          ),
+          getOne: jest.fn(() => Promise.resolve(null)),
+        };
+        return query;
+      }),
       create: jest.fn((data: Partial<User>): User => data as User),
       save: jest.fn((data: Partial<User>) => {
         const saved = {

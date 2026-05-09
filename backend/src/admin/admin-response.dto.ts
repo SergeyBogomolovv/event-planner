@@ -3,9 +3,16 @@ import { User, UserRole, UserStatus } from '../users/user.entity';
 import { UserResponseDto } from '../users/user-response.dto';
 import { Event, EventStatus } from '../events/event.entity';
 import { EventResponseDto } from '../events/event-response.dto';
-import { AdminEventListItem, PaginatedResult } from './admin.service';
+import { AdminEventListItem, AdminStats } from './admin.service';
 
 type CountByStatus<T extends string> = Record<T, number>;
+
+type PaginationMeta = {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
 
 export class AdminStatsResponseDto {
   users: {
@@ -22,7 +29,7 @@ export class AdminStatsResponseDto {
     byStatus: CountByStatus<EventParticipantStatus>;
   };
 
-  constructor(stats: AdminStatsResponseDto) {
+  constructor(stats: AdminStats) {
     this.users = stats.users;
     this.events = stats.events;
     this.participants = stats.participants;
@@ -51,7 +58,7 @@ export class PaginatedResponseDto<T> {
   limit: number;
   totalPages: number;
 
-  constructor(page: Omit<PaginatedResult<unknown>, 'items'>, items: T[]) {
+  constructor(page: PaginationMeta, items: T[]) {
     this.items = items;
     this.total = page.total;
     this.page = page.page;

@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { Event, EventStatus } from '../events/event.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { User } from '../users/user.entity';
@@ -24,6 +24,7 @@ export class ParticipantsService {
     @InjectRepository(User)
     private readonly users: Repository<User>,
     private readonly notificationsService: NotificationsService,
+    private readonly dataSource: DataSource,
   ) {}
 
   async findInvitations(user: User): Promise<EventParticipant[]> {
@@ -129,24 +130,50 @@ export class ParticipantsService {
 
   async accept(eventId: string, userId: string, user: User) {
     this.assertSameUser(userId, user);
-    const participant = await this.requireParticipant(eventId, userId);
-    this.assertActive(participant.event);
+    const result = await this.dataSource.transaction(async (manager) => {
+      const events = manager.getRepository(Event);
+      const participants = manager.getRepository(EventParticipant);
+      const event = await events.findOne({
+        where: { id: eventId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!event) {
+        throw new NotFoundException('Event not found');
+      }
 
-    if (participant.status === EventParticipantStatus.Accepted) {
-      return participant;
+      const participant = await participants.findOne({
+        where: { eventId, userId },
+      });
+      if (!participant) {
+        throw new NotFoundException('Participant not found');
+      }
+
+      participant.event = event;
+      this.assertActive(event);
+
+      if (participant.status === EventParticipantStatus.Accepted) {
+        return { participant, changed: false };
+      }
+      if (participant.status !== EventParticipantStatus.Invited) {
+        throw new BadRequestException('Invitation cannot be accepted');
+      }
+
+      await this.assertParticipantLimit(event, participants);
+
+      participant.status = EventParticipantStatus.Accepted;
+      participant.respondedAt = new Date();
+      participant.removedAt = null;
+      return {
+        participant: await participants.save(participant),
+        changed: true,
+      };
+    });
+    if (result.changed) {
+      await this.notificationsService.notifyParticipantAccepted(
+        result.participant,
+      );
     }
-    if (participant.status !== EventParticipantStatus.Invited) {
-      throw new BadRequestException('Invitation cannot be accepted');
-    }
-
-    await this.assertParticipantLimit(participant.event);
-
-    participant.status = EventParticipantStatus.Accepted;
-    participant.respondedAt = new Date();
-    participant.removedAt = null;
-    const saved = await this.participants.save(participant);
-    await this.notificationsService.notifyParticipantAccepted(saved);
-    return saved;
+    return result.participant;
   }
 
   async decline(eventId: string, userId: string, user: User) {
@@ -254,12 +281,15 @@ export class ParticipantsService {
     }
   }
 
-  private async assertParticipantLimit(event: Event) {
+  private async assertParticipantLimit(
+    event: Event,
+    participantsRepository = this.participants,
+  ) {
     if (!event.participantLimit) {
       return;
     }
 
-    const acceptedCount = await this.participants.count({
+    const acceptedCount = await participantsRepository.count({
       where: {
         eventId: event.id,
         status: EventParticipantStatus.Accepted,

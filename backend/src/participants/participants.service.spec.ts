@@ -160,6 +160,18 @@ describe('ParticipantsService', () => {
       notifyParticipantAccepted: jest.fn(() => Promise.resolve()),
       notifyParticipantDeclined: jest.fn(() => Promise.resolve()),
     };
+    const dataSource = {
+      transaction: jest.fn((callback: (manager: unknown) => unknown) =>
+        callback({
+          getRepository: (entity: unknown) => {
+            if (entity === Event) {
+              return eventsRepo;
+            }
+            return participantsRepo;
+          },
+        }),
+      ),
+    };
 
     return {
       service: new ParticipantsService(
@@ -167,6 +179,7 @@ describe('ParticipantsService', () => {
         eventsRepo as unknown as Repository<Event>,
         usersRepo as unknown as Repository<User>,
         notificationsService as unknown as NotificationsService,
+        dataSource as never,
       ),
       participantsStore,
       notificationsService,
@@ -217,6 +230,27 @@ describe('ParticipantsService', () => {
     expect(notificationsService.notifyParticipantAccepted).toHaveBeenCalledWith(
       accepted,
     );
+  });
+
+  it('does not notify organizer when already accepted invitation is accepted again', async () => {
+    const participant = createParticipant({
+      status: EventParticipantStatus.Accepted,
+      respondedAt: now,
+    });
+    const { service, notificationsService } = createService({
+      participants: [participant],
+    });
+
+    const accepted = await service.accept(
+      'event-1',
+      invitedUser.id,
+      invitedUser,
+    );
+
+    expect(accepted.status).toBe(EventParticipantStatus.Accepted);
+    expect(
+      notificationsService.notifyParticipantAccepted,
+    ).not.toHaveBeenCalled();
   });
 
   it('does not exceed participant limit', async () => {
@@ -288,7 +322,9 @@ describe('ParticipantsService', () => {
     await service.findInvitations(invitedUser);
 
     const query = getInvitationsQuery();
-    expect(query).not.toBeNull();
+    if (!query) {
+      throw new Error('Expected invitations query builder to be created');
+    }
     expect(query.innerJoinAndSelect).toHaveBeenCalledWith(
       'event.organizer',
       'organizer',

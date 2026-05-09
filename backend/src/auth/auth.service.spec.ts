@@ -52,11 +52,6 @@ describe('AuthService', () => {
       findByEmail: jest.fn(() => Promise.resolve(user)),
       requireActiveById: jest.fn(() => Promise.resolve(user)),
     };
-    const response = {
-      cookie: jest.fn(),
-      clearCookie: jest.fn(),
-    };
-
     return {
       service: new AuthService(
         config as never,
@@ -64,7 +59,6 @@ describe('AuthService', () => {
         sessions as never,
         usersService as never,
       ),
-      response,
       jwt,
       sessions,
       usersService,
@@ -73,71 +67,51 @@ describe('AuthService', () => {
 
   it('logs in with valid password and sets httpOnly cookies', async () => {
     jest.mocked(bcrypt.compare).mockResolvedValue(true as never);
-    const { service, response } = createService();
+    const { service } = createService();
 
-    const user = await service.login(
-      { email: 'ada@example.com', password: 'password123' },
-      response as never,
-    );
+    const session = await service.login({
+      email: 'ada@example.com',
+      password: 'password123',
+    });
 
-    expect(user).toMatchObject({ email: 'ada@example.com' });
-    expect(response.cookie).toHaveBeenCalledWith(
-      'access_token',
-      'access-token',
-      expect.objectContaining({ httpOnly: true, maxAge: 15 * 60 * 1000 }),
-    );
-    expect(response.cookie).toHaveBeenCalledWith(
-      'refresh_token',
-      'refresh-token',
-      expect.objectContaining({ httpOnly: true }),
-    );
+    expect(session.user).toMatchObject({ email: 'ada@example.com' });
+    expect(session.accessToken).toBe('access-token');
+    expect(session.refreshToken).toBe('refresh-token');
   });
 
   it('rejects invalid password', async () => {
     jest.mocked(bcrypt.compare).mockResolvedValue(false as never);
-    const { service, response } = createService();
+    const { service } = createService();
 
     await expect(
-      service.login(
-        { email: 'ada@example.com', password: 'wrong-password' },
-        response as never,
-      ),
+      service.login({ email: 'ada@example.com', password: 'wrong-password' }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
   it('maps invalid refresh token to unauthorized response', async () => {
-    const { service, response, jwt, sessions } = createService();
+    const { service, jwt, sessions } = createService();
     jwt.verifyAsync.mockRejectedValue(new Error('jwt malformed'));
 
-    await expect(
-      service.refresh('broken-token', response as never),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(service.refresh('broken-token')).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
     expect(sessions.getRefreshSession).not.toHaveBeenCalled();
   });
 
   it('clears refresh session on logout', async () => {
-    const { service, response, sessions } = createService();
+    const { service, sessions } = createService();
 
-    await service.logout(
-      {
-        id: 'user-1',
-        email: 'ada@example.com',
-        name: 'Ada',
-        passwordHash: 'hash',
-        role: UserRole.User,
-        status: UserStatus.Active,
-        createdAt: new Date('2026-01-01T00:00:00Z'),
-        updatedAt: new Date('2026-01-01T00:00:00Z'),
-      },
-      response as never,
-    );
+    await service.logout({
+      id: 'user-1',
+      email: 'ada@example.com',
+      name: 'Ada',
+      passwordHash: 'hash',
+      role: UserRole.User,
+      status: UserStatus.Active,
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+      updatedAt: new Date('2026-01-01T00:00:00Z'),
+    });
 
     expect(sessions.deleteRefreshSession).toHaveBeenCalledWith('user-1');
-    expect(response.clearCookie).toHaveBeenCalledWith('access_token', {
-      path: '/',
-    });
-    expect(response.clearCookie).toHaveBeenCalledWith('refresh_token', {
-      path: '/',
-    });
   });
 });

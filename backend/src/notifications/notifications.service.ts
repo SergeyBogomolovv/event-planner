@@ -1,6 +1,7 @@
 import {
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -17,6 +18,8 @@ import { Notification, NotificationType } from './notification.entity';
 
 @Injectable()
 export class NotificationsService {
+  private readonly logger = new Logger(NotificationsService.name);
+
   constructor(
     @InjectRepository(Notification)
     private readonly notifications: Repository<Notification>,
@@ -275,8 +278,18 @@ export class NotificationsService {
   }): Promise<void> {
     try {
       await this.mailService.queueEmail(params);
-    } catch {
+    } catch (error) {
+      this.logger.warn(
+        `Email queue failed for user=${params.user.id} event=${params.relatedEventId}: ${this.resolveErrorMessage(error)}`,
+      );
       return;
     }
+  }
+
+  private resolveErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+      return error.message;
+    }
+    return 'Unknown email queue error';
   }
 }

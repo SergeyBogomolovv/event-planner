@@ -2,18 +2,23 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import type { Response } from 'express';
 import { LoginDto, RegisterDto } from './dto';
 import { RedisSessionService } from './redis-session.service';
 import { User, UserStatus } from '../users/user.entity';
 import { UsersService } from '../users/users.service';
 
-const ACCESS_MAX_AGE_MS = 15 * 60 * 1000;
-const REFRESH_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+export const ACCESS_MAX_AGE_MS = 15 * 60 * 1000;
+export const REFRESH_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 type JwtPayload = {
   sub: string;
+};
+
+export type AuthSession = {
+  user: User;
+  accessToken: string;
+  refreshToken: string;
 };
 
 @Injectable()
@@ -25,7 +30,7 @@ export class AuthService {
     private readonly usersService: UsersService,
   ) {}
 
-  async register(dto: RegisterDto, response: Response): Promise<User> {
+  async register(dto: RegisterDto): Promise<AuthSession> {
     const passwordHash: string = await bcrypt.hash(dto.password, 12);
     const user = await this.usersService.create({
       name: dto.name,
@@ -33,11 +38,10 @@ export class AuthService {
       passwordHash,
     });
 
-    await this.issueCookies(user.id, response);
-    return user;
+    return this.issueSession(user);
   }
 
-  async login(dto: LoginDto, response: Response): Promise<User> {
+  async login(dto: LoginDto): Promise<AuthSession> {
     const user = await this.usersService.findByEmail(dto.email);
     if (!user || user.status === UserStatus.Blocked) {
       throw new UnauthorizedException('Invalid email or password');
@@ -51,14 +55,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    await this.issueCookies(user.id, response);
-    return user;
+    return this.issueSession(user);
   }
 
-  async refresh(
-    refreshToken: string | undefined,
-    response: Response,
-  ): Promise<User> {
+  async refresh(refreshToken: string | undefined): Promise<AuthSession> {
     if (!refreshToken) {
       throw new UnauthorizedException('Missing refresh token');
     }
@@ -74,8 +74,7 @@ export class AuthService {
       throw new UnauthorizedException('User is not allowed');
     }
 
-    await this.issueCookies(user.id, response);
-    return user;
+    return this.issueSession(user);
   }
 
   private async verifyRefreshToken(refreshToken: string): Promise<JwtPayload> {
@@ -88,25 +87,21 @@ export class AuthService {
     }
   }
 
-  async logout(user: User, response: Response): Promise<{ ok: true }> {
+  async logout(user: User): Promise<{ ok: true }> {
     await this.sessions.deleteRefreshSession(user.id);
-    this.clearCookies(response);
     return { ok: true };
   }
 
-  private async issueCookies(
-    userId: string,
-    response: Response,
-  ): Promise<void> {
+  private async issueSession(user: User): Promise<AuthSession> {
     const accessToken: string = await this.jwt.signAsync(
-      { sub: userId },
+      { sub: user.id },
       {
         secret: this.getAccessSecret(),
         expiresIn: '15m',
       },
     );
     const refreshToken: string = await this.jwt.signAsync(
-      { sub: userId },
+      { sub: user.id },
       {
         secret: this.getRefreshSecret(),
         expiresIn: '7d',
@@ -114,26 +109,12 @@ export class AuthService {
     );
 
     await this.sessions.setRefreshSession(
-      userId,
+      user.id,
       refreshToken,
       REFRESH_TTL_SECONDS,
     );
 
-    const secure = this.config.get<boolean>('COOKIE_SECURE') ?? false;
-    response.cookie('access_token', accessToken, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure,
-      maxAge: ACCESS_MAX_AGE_MS,
-      path: '/',
-    });
-    response.cookie('refresh_token', refreshToken, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure,
-      maxAge: REFRESH_MAX_AGE_MS,
-      path: '/',
-    });
+    return { user, accessToken, refreshToken };
   }
 
   private getAccessSecret(): string {
@@ -148,10 +129,5 @@ export class AuthService {
       this.config.get<string>('JWT_REFRESH_SECRET') ??
       'dev-refresh-secret-change-me'
     );
-  }
-
-  private clearCookies(response: Response): void {
-    response.clearCookie('access_token', { path: '/' });
-    response.clearCookie('refresh_token', { path: '/' });
   }
 }
