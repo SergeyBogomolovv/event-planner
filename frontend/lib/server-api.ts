@@ -22,7 +22,7 @@ export async function serverApiRequest<T>(
   })
 
   if (!response.ok) {
-    if (options.redirectToLogin) {
+    if (options.redirectToLogin && response.status === 401) {
       redirect('/login')
     }
     throw new Error(`Server API request failed: ${response.status}`)
@@ -56,7 +56,11 @@ export function getInvitations() {
 }
 
 export function getParticipants(eventId: string) {
-  return serverApiRequest<ParticipantItem[]>(`/events/${eventId}/participants`, {}, { redirectToLogin: true })
+  return serverApiRequest<ParticipantItem[]>(
+    `/events/${eventId}/participants`,
+    {},
+    { redirectToLogin: true },
+  )
 }
 
 export function getManageParticipants(eventId: string) {

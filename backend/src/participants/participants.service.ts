@@ -24,15 +24,19 @@ export class ParticipantsService {
     private readonly users: Repository<User>,
   ) {}
 
-  findInvitations(user: User): Promise<EventParticipant[]> {
-    return this.participants.find({
-      where: {
-        userId: user.id,
+  async findInvitations(user: User): Promise<EventParticipant[]> {
+    return this.participants
+      .createQueryBuilder('participant')
+      .innerJoinAndSelect('participant.event', 'event')
+      .innerJoinAndSelect('participant.user', 'user')
+      .innerJoinAndSelect('participant.invitedBy', 'invitedBy')
+      .where('participant.userId = :userId', { userId: user.id })
+      .andWhere('participant.status = :status', {
         status: EventParticipantStatus.Invited,
-        event: { deletedAt: IsNull() },
-      },
-      order: { invitedAt: 'DESC' },
-    });
+      })
+      .andWhere('event.deletedAt IS NULL')
+      .orderBy('participant.invitedAt', 'DESC')
+      .getMany();
   }
 
   async invite(eventId: string, invitedUserId: string, organizer: User) {

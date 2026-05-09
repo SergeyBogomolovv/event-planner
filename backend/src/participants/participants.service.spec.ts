@@ -28,6 +28,14 @@ const otherUser = createUser({
   name: 'Other',
 });
 
+type ParticipantsQueryBuilderMock = {
+  innerJoinAndSelect: jest.MockedFunction<() => ParticipantsQueryBuilderMock>;
+  where: jest.MockedFunction<() => ParticipantsQueryBuilderMock>;
+  andWhere: jest.MockedFunction<() => ParticipantsQueryBuilderMock>;
+  orderBy: jest.MockedFunction<() => ParticipantsQueryBuilderMock>;
+  getMany: jest.MockedFunction<() => Promise<EventParticipant[]>>;
+};
+
 describe('ParticipantsService', () => {
   function createService(params: {
     events?: Event[];
@@ -105,6 +113,31 @@ describe('ParticipantsService', () => {
           ).length,
         ),
       ),
+      createQueryBuilder: jest.fn(() => {
+        const query: ParticipantsQueryBuilderMock = {
+          innerJoinAndSelect: jest.fn(() => query),
+          where: jest.fn(() => query),
+          andWhere: jest.fn(() => query),
+          orderBy: jest.fn(() => query),
+          getMany: jest.fn(() =>
+            Promise.resolve(
+              participantsStore
+                .filter(
+                  (participant) =>
+                    participant.userId === invitedUser.id &&
+                    participant.status === EventParticipantStatus.Invited &&
+                    participant.event.deletedAt === null,
+                )
+                .sort(
+                  (left, right) =>
+                    right.invitedAt.getTime() - left.invitedAt.getTime(),
+                ),
+            ),
+          ),
+        };
+
+        return query;
+      }),
     };
 
     const eventsRepo = {
@@ -210,6 +243,34 @@ describe('ParticipantsService', () => {
 
     expect(result.participants).toHaveLength(1);
     expect(result.participants[0].id).toBe('accepted-1');
+  });
+
+  it('hides invitations for deleted events', async () => {
+    const deletedEvent = createEvent({
+      id: 'deleted-event',
+      deletedAt: now,
+    });
+    const activeEvent = createEvent({ id: 'active-event' });
+    const { service } = createService({
+      events: [deletedEvent, activeEvent],
+      participants: [
+        createParticipant({
+          id: 'deleted-invitation',
+          eventId: deletedEvent.id,
+          event: deletedEvent,
+        }),
+        createParticipant({
+          id: 'active-invitation',
+          eventId: activeEvent.id,
+          event: activeEvent,
+        }),
+      ],
+    });
+
+    const invitations = await service.findInvitations(invitedUser);
+
+    expect(invitations).toHaveLength(1);
+    expect(invitations[0].id).toBe('active-invitation');
   });
 });
 
