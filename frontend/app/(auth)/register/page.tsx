@@ -15,7 +15,9 @@ export default function RegisterPage() {
             Event Planner
           </Link>
           <div className='py-12'>
-            <Badge variant='outline' className='h-7 px-3'>Новый организатор</Badge>
+            <Badge variant='outline' className='h-7 px-3'>
+              Новый организатор
+            </Badge>
             <h1 className='mt-5 max-w-xl text-4xl font-semibold leading-tight sm:text-5xl'>
               Создайте аккаунт и начните собирать закрытые мероприятия.
             </h1>
@@ -41,19 +43,21 @@ export default function RegisterPage() {
           <Card className='w-full py-0 text-zinc-950'>
             <CardHeader className='p-6 pb-0'>
               <CardTitle className='text-2xl'>Регистрация</CardTitle>
-              <p className='text-sm text-muted-foreground'>Пароль должен быть не короче 8 символов.</p>
+              <p className='text-sm text-muted-foreground'>
+                Пароль должен быть не короче 8 символов.
+              </p>
             </CardHeader>
             <CardContent className='p-6'>
               <Suspense>
                 <AuthForm mode='register' />
               </Suspense>
               <Separator className='my-5' />
-            <p className='mt-5 text-sm text-zinc-600'>
-              Уже есть аккаунт?{' '}
-              <Link href='/login' className='font-medium text-zinc-950 underline'>
-                Войти
-              </Link>
-            </p>
+              <p className='mt-5 text-sm text-zinc-600'>
+                Уже есть аккаунт?{' '}
+                <Link href='/login' className='font-medium text-zinc-950 underline'>
+                  Войти
+                </Link>
+              </p>
             </CardContent>
           </Card>
         </section>

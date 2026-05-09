@@ -1,7 +1,6 @@
 import { UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
-import type { SafeUser } from '../users/safe-user.type';
 import { User, UserRole, UserStatus } from '../users/user.entity';
 
 type JwtOptions = {
@@ -52,15 +51,6 @@ describe('AuthService', () => {
       create: jest.fn(() => Promise.resolve(user)),
       findByEmail: jest.fn(() => Promise.resolve(user)),
       requireActiveById: jest.fn(() => Promise.resolve(user)),
-      toSafeUser: jest.fn(
-        (input: User): SafeUser => ({
-          id: input.id,
-          email: input.email,
-          name: input.name,
-          role: input.role,
-          status: input.status,
-        }),
-      ),
     };
     const response = {
       cookie: jest.fn(),
@@ -133,8 +123,11 @@ describe('AuthService', () => {
         id: 'user-1',
         email: 'ada@example.com',
         name: 'Ada',
+        passwordHash: 'hash',
         role: UserRole.User,
         status: UserStatus.Active,
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+        updatedAt: new Date('2026-01-01T00:00:00Z'),
       },
       response as never,
     );

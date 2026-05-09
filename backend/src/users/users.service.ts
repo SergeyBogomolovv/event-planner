@@ -6,7 +6,6 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UpdateProfileDto } from './dto';
-import { SafeUser } from './safe-user.type';
 import { User, UserRole, UserStatus } from './user.entity';
 
 @Injectable()
@@ -15,18 +14,6 @@ export class UsersService {
     @InjectRepository(User)
     private readonly users: Repository<User>,
   ) {}
-
-  toSafeUser(user: User): SafeUser {
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      status: user.status,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    };
-  }
 
   async create(params: { name: string; email: string; passwordHash: string }) {
     const email = this.normalizeEmail(params.email);
@@ -88,7 +75,7 @@ export class UsersService {
       user.name = this.normalizeName(dto.name);
     }
 
-    return this.toSafeUser(await this.users.save(user));
+    return this.users.save(user);
   }
 
   private normalizeEmail(email: string): string {

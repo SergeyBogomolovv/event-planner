@@ -39,6 +39,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('User is not allowed');
     }
 
-    return this.usersService.toSafeUser(user);
+    return user;
   }
 }

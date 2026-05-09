@@ -6,12 +6,9 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
-import type { SafeUser } from '../users/safe-user.type';
-import { UserRole } from '../users/user.entity';
-import { UsersService } from '../users/users.service';
+import { User, UserRole } from '../users/user.entity';
 import { CreateEventDto, UpdateEventDto } from './dto';
 import { Event, EventStatus } from './event.entity';
-import type { EventAction, EventResponse } from './event-response.type';
 
 type EventDateRange = {
   startsAt: string;
@@ -23,10 +20,9 @@ export class EventsService {
   constructor(
     @InjectRepository(Event)
     private readonly events: Repository<Event>,
-    private readonly usersService: UsersService,
   ) {}
 
-  async create(dto: CreateEventDto, user: SafeUser): Promise<EventResponse> {
+  async create(dto: CreateEventDto, user: User): Promise<Event> {
     this.validateDateRange({ startsAt: dto.startsAt, endsAt: dto.endsAt });
 
     const event = await this.events.save(
@@ -43,34 +39,28 @@ export class EventsService {
       }),
     );
 
-    return this.toResponse(await this.requireEvent(event.id), user);
+    return this.requireEvent(event.id);
   }
 
-  async findMine(user: SafeUser): Promise<EventResponse[]> {
-    const events = await this.events.find({
+  findMine(user: User): Promise<Event[]> {
+    return this.events.find({
       where: { organizerId: user.id, deletedAt: IsNull() },
       order: { startsAt: 'ASC', createdAt: 'DESC' },
     });
-
-    return events.map((event) => this.toResponse(event, user));
   }
 
-  findParticipating(user: SafeUser): EventResponse[] {
+  findParticipating(user: User): Event[] {
     void user;
     return [];
   }
 
-  async findOne(id: string, user: SafeUser): Promise<EventResponse> {
+  async findOne(id: string, user: User): Promise<Event> {
     const event = await this.requireEvent(id);
     this.assertCanView(event, user);
-    return this.toResponse(event, user);
+    return event;
   }
 
-  async update(
-    id: string,
-    dto: UpdateEventDto,
-    user: SafeUser,
-  ): Promise<EventResponse> {
+  async update(id: string, dto: UpdateEventDto, user: User): Promise<Event> {
     const event = await this.requireEvent(id);
     this.assertOrganizer(event, user);
     if (event.status === EventStatus.Completed) {
@@ -80,10 +70,10 @@ export class EventsService {
     this.validateDateRange(this.resolveDateRange(event, dto));
     this.applyUpdates(event, dto);
 
-    return this.toResponse(await this.events.save(event), user);
+    return this.events.save(event);
   }
 
-  async publish(id: string, user: SafeUser): Promise<EventResponse> {
+  async publish(id: string, user: User): Promise<Event> {
     const event = await this.requireEvent(id);
     this.assertOrganizer(event, user);
     this.assertStatus(
@@ -92,10 +82,10 @@ export class EventsService {
       'Only draft event can be published',
     );
     event.status = EventStatus.Active;
-    return this.toResponse(await this.events.save(event), user);
+    return this.events.save(event);
   }
 
-  async cancel(id: string, user: SafeUser): Promise<EventResponse> {
+  async cancel(id: string, user: User): Promise<Event> {
     const event = await this.requireEvent(id);
     this.assertOrganizer(event, user);
     this.assertStatus(
@@ -104,10 +94,10 @@ export class EventsService {
       'Event cannot be cancelled',
     );
     event.status = EventStatus.Cancelled;
-    return this.toResponse(await this.events.save(event), user);
+    return this.events.save(event);
   }
 
-  async complete(id: string, user: SafeUser): Promise<EventResponse> {
+  async complete(id: string, user: User): Promise<Event> {
     const event = await this.requireEvent(id);
     this.assertOrganizer(event, user);
     this.assertStatus(
@@ -116,10 +106,10 @@ export class EventsService {
       'Only active event can be completed',
     );
     event.status = EventStatus.Completed;
-    return this.toResponse(await this.events.save(event), user);
+    return this.events.save(event);
   }
 
-  async remove(id: string, user: SafeUser): Promise<{ ok: true }> {
+  async remove(id: string, user: User): Promise<{ ok: true }> {
     const event = await this.requireEvent(id);
     if (!this.isOrganizer(event, user) && user.role !== UserRole.Admin) {
       throw new ForbiddenException('Only organizer or admin can delete event');
@@ -139,20 +129,20 @@ export class EventsService {
     return event;
   }
 
-  private assertCanView(event: Event, user: SafeUser): void {
+  private assertCanView(event: Event, user: User): void {
     if (this.isOrganizer(event, user) || user.role === UserRole.Admin) {
       return;
     }
     throw new ForbiddenException('You do not have access to this event');
   }
 
-  private assertOrganizer(event: Event, user: SafeUser): void {
+  private assertOrganizer(event: Event, user: User): void {
     if (!this.isOrganizer(event, user)) {
       throw new ForbiddenException('Only organizer can manage event');
     }
   }
 
-  private isOrganizer(event: Event, user: SafeUser): boolean {
+  private isOrganizer(event: Event, user: User): boolean {
     return event.organizerId === user.id;
   }
 
@@ -217,61 +207,5 @@ export class EventsService {
     if (!statuses.includes(event.status)) {
       throw new BadRequestException(errorMessage);
     }
-  }
-
-  private getAvailableActions(
-    event: Event,
-    isOrganizer: boolean,
-    isAdmin: boolean,
-  ): EventAction[] {
-    const actions: EventAction[] = [];
-
-    if (isOrganizer && event.status !== EventStatus.Completed) {
-      actions.push('edit');
-    }
-    if (isOrganizer && event.status === EventStatus.Draft) {
-      actions.push('publish');
-    }
-    if (
-      isOrganizer &&
-      [EventStatus.Draft, EventStatus.Active].includes(event.status)
-    ) {
-      actions.push('cancel');
-    }
-    if (isOrganizer && event.status === EventStatus.Active) {
-      actions.push('complete');
-    }
-    if (isOrganizer || isAdmin) {
-      actions.push('delete');
-    }
-
-    return actions;
-  }
-
-  private toResponse(event: Event, user: SafeUser): EventResponse {
-    const isOrganizer = this.isOrganizer(event, user);
-    const isAdmin = user.role === UserRole.Admin;
-
-    return {
-      id: event.id,
-      title: event.title,
-      description: event.description,
-      startsAt: event.startsAt,
-      endsAt: event.endsAt,
-      location: event.location,
-      format: event.format,
-      participantLimit: event.participantLimit,
-      status: event.status,
-      organizer: this.usersService.toSafeUser(event.organizer),
-      relation: {
-        isOrganizer,
-        isInvited: false,
-        isParticipant: false,
-        isAdmin,
-      },
-      availableActions: this.getAvailableActions(event, isOrganizer, isAdmin),
-      createdAt: event.createdAt,
-      updatedAt: event.updatedAt,
-    };
   }
 }

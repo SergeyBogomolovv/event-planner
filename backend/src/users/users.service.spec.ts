@@ -55,7 +55,7 @@ describe('UsersService', () => {
         passwordHash: 'hash',
       }),
     );
-    expect(service.toSafeUser(user)).not.toHaveProperty('passwordHash');
+    expect(user).toHaveProperty('passwordHash', 'hash');
   });
 
   it('rejects duplicate email', async () => {

@@ -5,8 +5,7 @@ import * as bcrypt from 'bcrypt';
 import type { Response } from 'express';
 import { LoginDto, RegisterDto } from './dto';
 import { RedisSessionService } from './redis-session.service';
-import type { SafeUser } from '../users/safe-user.type';
-import { UserStatus } from '../users/user.entity';
+import { User, UserStatus } from '../users/user.entity';
 import { UsersService } from '../users/users.service';
 
 const ACCESS_MAX_AGE_MS = 15 * 60 * 1000;
@@ -26,7 +25,7 @@ export class AuthService {
     private readonly usersService: UsersService,
   ) {}
 
-  async register(dto: RegisterDto, response: Response): Promise<SafeUser> {
+  async register(dto: RegisterDto, response: Response): Promise<User> {
     const passwordHash: string = await bcrypt.hash(dto.password, 12);
     const user = await this.usersService.create({
       name: dto.name,
@@ -35,10 +34,10 @@ export class AuthService {
     });
 
     await this.issueCookies(user.id, response);
-    return this.usersService.toSafeUser(user);
+    return user;
   }
 
-  async login(dto: LoginDto, response: Response): Promise<SafeUser> {
+  async login(dto: LoginDto, response: Response): Promise<User> {
     const user = await this.usersService.findByEmail(dto.email);
     if (!user || user.status === UserStatus.Blocked) {
       throw new UnauthorizedException('Invalid email or password');
@@ -53,13 +52,13 @@ export class AuthService {
     }
 
     await this.issueCookies(user.id, response);
-    return this.usersService.toSafeUser(user);
+    return user;
   }
 
   async refresh(
     refreshToken: string | undefined,
     response: Response,
-  ): Promise<SafeUser> {
+  ): Promise<User> {
     if (!refreshToken) {
       throw new UnauthorizedException('Missing refresh token');
     }
@@ -76,7 +75,7 @@ export class AuthService {
     }
 
     await this.issueCookies(user.id, response);
-    return this.usersService.toSafeUser(user);
+    return user;
   }
 
   private async verifyRefreshToken(refreshToken: string): Promise<JwtPayload> {
@@ -89,7 +88,7 @@ export class AuthService {
     }
   }
 
-  async logout(user: SafeUser, response: Response): Promise<{ ok: true }> {
+  async logout(user: User, response: Response): Promise<{ ok: true }> {
     await this.sessions.deleteRefreshSession(user.id);
     this.clearCookies(response);
     return { ok: true };

@@ -10,8 +10,9 @@ import {
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import type { SafeUser } from '../users/safe-user.type';
+import { User } from '../users/user.entity';
 import { CreateEventDto, UpdateEventDto } from './dto';
+import { EventResponseDto } from './event-response.dto';
 import { EventsService } from './events.service';
 
 @UseGuards(JwtAuthGuard)
@@ -20,51 +21,60 @@ export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
 
   @Post()
-  create(@Body() dto: CreateEventDto, @CurrentUser() user: SafeUser) {
-    return this.eventsService.create(dto, user);
+  async create(@Body() dto: CreateEventDto, @CurrentUser() user: User) {
+    const event = await this.eventsService.create(dto, user);
+    return new EventResponseDto(event, user);
   }
 
   @Get('my')
-  findMine(@CurrentUser() user: SafeUser) {
-    return this.eventsService.findMine(user);
+  async findMine(@CurrentUser() user: User) {
+    const events = await this.eventsService.findMine(user);
+    return events.map((event) => new EventResponseDto(event, user));
   }
 
   @Get('participating')
-  findParticipating(@CurrentUser() user: SafeUser) {
-    return this.eventsService.findParticipating(user);
+  findParticipating(@CurrentUser() user: User) {
+    return this.eventsService
+      .findParticipating(user)
+      .map((event) => new EventResponseDto(event, user));
   }
 
   @Get(':eventId')
-  findOne(@Param('eventId') eventId: string, @CurrentUser() user: SafeUser) {
-    return this.eventsService.findOne(eventId, user);
+  async findOne(@Param('eventId') eventId: string, @CurrentUser() user: User) {
+    const event = await this.eventsService.findOne(eventId, user);
+    return new EventResponseDto(event, user);
   }
 
   @Patch(':eventId')
-  update(
+  async update(
     @Param('eventId') eventId: string,
     @Body() dto: UpdateEventDto,
-    @CurrentUser() user: SafeUser,
+    @CurrentUser() user: User,
   ) {
-    return this.eventsService.update(eventId, dto, user);
+    const event = await this.eventsService.update(eventId, dto, user);
+    return new EventResponseDto(event, user);
   }
 
   @Post(':eventId/publish')
-  publish(@Param('eventId') eventId: string, @CurrentUser() user: SafeUser) {
-    return this.eventsService.publish(eventId, user);
+  async publish(@Param('eventId') eventId: string, @CurrentUser() user: User) {
+    const event = await this.eventsService.publish(eventId, user);
+    return new EventResponseDto(event, user);
   }
 
   @Post(':eventId/cancel')
-  cancel(@Param('eventId') eventId: string, @CurrentUser() user: SafeUser) {
-    return this.eventsService.cancel(eventId, user);
+  async cancel(@Param('eventId') eventId: string, @CurrentUser() user: User) {
+    const event = await this.eventsService.cancel(eventId, user);
+    return new EventResponseDto(event, user);
   }
 
   @Post(':eventId/complete')
-  complete(@Param('eventId') eventId: string, @CurrentUser() user: SafeUser) {
-    return this.eventsService.complete(eventId, user);
+  async complete(@Param('eventId') eventId: string, @CurrentUser() user: User) {
+    const event = await this.eventsService.complete(eventId, user);
+    return new EventResponseDto(event, user);
   }
 
   @Delete(':eventId')
-  remove(@Param('eventId') eventId: string, @CurrentUser() user: SafeUser) {
+  remove(@Param('eventId') eventId: string, @CurrentUser() user: User) {
     return this.eventsService.remove(eventId, user);
   }
 }

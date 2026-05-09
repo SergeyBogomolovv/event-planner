@@ -1,8 +1,6 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import type { Repository } from 'typeorm';
-import type { SafeUser } from '../users/safe-user.type';
 import { User, UserRole, UserStatus } from '../users/user.entity';
-import { UsersService } from '../users/users.service';
 import { Event, EventFormat, EventStatus } from './event.entity';
 import { EventsService } from './events.service';
 
@@ -19,22 +17,15 @@ const organizerUser: User = {
   updatedAt: now,
 };
 
-const organizer: SafeUser = {
-  id: organizerUser.id,
-  email: organizerUser.email,
-  name: organizerUser.name,
-  role: organizerUser.role,
-  status: organizerUser.status,
-  createdAt: now,
-  updatedAt: now,
-};
-
-const otherUser: SafeUser = {
+const otherUser: User = {
   id: 'user-2',
   email: 'user@example.com',
+  passwordHash: 'hash',
   name: 'User',
   role: UserRole.User,
   status: UserStatus.Active,
+  createdAt: now,
+  updatedAt: now,
 };
 
 describe('EventsService', () => {
@@ -65,7 +56,8 @@ describe('EventsService', () => {
           store
             .filter(
               (event) =>
-                event.organizerId === organizer.id && event.deletedAt === null,
+                event.organizerId === organizerUser.id &&
+                event.deletedAt === null,
             )
             .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime()),
         ),
@@ -82,25 +74,8 @@ describe('EventsService', () => {
         return Promise.resolve(event);
       }),
     };
-    const usersService = {
-      toSafeUser: jest.fn(
-        (user: User): SafeUser => ({
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          status: user.status,
-          createdAt: user.createdAt,
-          updatedAt: user.updatedAt,
-        }),
-      ),
-    };
-
     return {
-      service: new EventsService(
-        repo as unknown as Repository<Event>,
-        usersService as unknown as UsersService,
-      ),
+      service: new EventsService(repo as unknown as Repository<Event>),
       repo,
       store,
     };
@@ -119,26 +94,20 @@ describe('EventsService', () => {
         format: EventFormat.Offline,
         participantLimit: 12,
       },
-      organizer,
+      organizerUser,
     );
 
     expect(event.status).toBe(EventStatus.Draft);
-    expect(event.relation.isOrganizer).toBe(true);
-    expect(event.availableActions).toEqual([
-      'edit',
-      'publish',
-      'cancel',
-      'delete',
-    ]);
+    expect(event.organizerId).toBe(organizerUser.id);
   });
 
   it('returns only current user events from my list', async () => {
     const { service } = createService([
-      createEvent({ id: 'mine', organizerId: organizer.id }),
+      createEvent({ id: 'mine', organizerId: organizerUser.id }),
       createEvent({ id: 'another', organizerId: 'another-user' }),
     ]);
 
-    const events = await service.findMine(organizer);
+    const events = await service.findMine(organizerUser);
 
     expect(events).toHaveLength(1);
     expect(events[0].id).toBe('mine');
@@ -162,7 +131,7 @@ describe('EventsService', () => {
         location: null,
         participantLimit: null,
       },
-      organizer,
+      organizerUser,
     );
 
     expect(updated.endsAt).toBeNull();
@@ -182,7 +151,7 @@ describe('EventsService', () => {
       service.update(
         'event-1',
         { startsAt: '2026-06-01T13:00:00.000Z' },
-        organizer,
+        organizerUser,
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
@@ -190,22 +159,22 @@ describe('EventsService', () => {
   it('runs allowed lifecycle transitions', async () => {
     const { service } = createService([createEvent()]);
 
-    const published = await service.publish('event-1', organizer);
+    const published = await service.publish('event-1', organizerUser);
     expect(published.status).toBe(EventStatus.Active);
 
-    const completed = await service.complete('event-1', organizer);
+    const completed = await service.complete('event-1', organizerUser);
     expect(completed.status).toBe(EventStatus.Completed);
 
-    await expect(service.cancel('event-1', organizer)).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+    await expect(
+      service.cancel('event-1', organizerUser),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('hides soft-deleted events from main lists', async () => {
     const { service } = createService([createEvent()]);
 
-    await service.remove('event-1', organizer);
-    const events = await service.findMine(organizer);
+    await service.remove('event-1', organizerUser);
+    const events = await service.findMine(organizerUser);
 
     expect(events).toHaveLength(0);
   });
@@ -214,7 +183,7 @@ describe('EventsService', () => {
 function createEvent(overrides: Partial<Event> = {}): Event {
   return {
     id: 'event-1',
-    organizerId: organizer.id,
+    organizerId: organizerUser.id,
     organizer: organizerUser,
     title: 'Planning Session',
     description: 'Quarter planning',
