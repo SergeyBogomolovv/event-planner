@@ -1,11 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { ArrowRight } from 'lucide-react'
 import { apiRequest, CurrentUser } from '@/lib/api'
-import { applyValidationErrors } from '@/lib/form-errors'
+import { getSafeRedirectPath } from '@/lib/navigation'
 import { loginSchema, registerSchema, type AuthFormValues } from '@/lib/form-schemas'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -19,7 +20,9 @@ type Mode = 'login' | 'register'
 export function AuthForm({ mode }: { mode: Mode }) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const schema = mode === 'register' ? registerSchema : loginSchema
   const form = useForm<AuthFormValues>({
+    resolver: zodResolver(schema),
     defaultValues: {
       name: '',
       email: '',
@@ -31,19 +34,16 @@ export function AuthForm({ mode }: { mode: Mode }) {
   async function submit(values: AuthFormValues) {
     setError('')
 
-    const schema = mode === 'register' ? registerSchema : loginSchema
-    const parsed = schema.safeParse(values)
-    if (!parsed.success) {
-      applyValidationErrors<AuthFormValues>(parsed.error.issues, form.setError)
-      return
-    }
-
     const payload =
       mode === 'register'
-        ? parsed.data
+        ? {
+            email: values.email,
+            name: values.name ?? '',
+            password: values.password,
+          }
         : {
-            email: parsed.data.email,
-            password: parsed.data.password,
+            email: values.email,
+            password: values.password,
           }
 
     try {
@@ -51,7 +51,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
         method: 'POST',
         body: JSON.stringify(payload),
       })
-      router.push(searchParams.get('next') ?? '/dashboard')
+      router.push(getSafeRedirectPath(searchParams.get('next')))
       router.refresh()
     } catch (err) {
       setError(err instanceof Error ? normalizeError(err.message) : 'Не удалось выполнить вход')
@@ -84,7 +84,11 @@ export function AuthForm({ mode }: { mode: Mode }) {
           />
         </ValidatedField>
 
-        <ValidatedField htmlFor='password' label='Пароль' error={form.formState.errors.password?.message}>
+        <ValidatedField
+          htmlFor='password'
+          label='Пароль'
+          error={form.formState.errors.password?.message}
+        >
           <Input
             id='password'
             type='password'

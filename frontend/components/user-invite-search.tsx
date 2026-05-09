@@ -1,12 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
 import { Search, Send } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import type { CurrentUser, ParticipantItem } from '@/lib/api'
 import { apiRequest } from '@/lib/api'
-import { applyValidationErrors } from '@/lib/form-errors'
 import { userSearchSchema, type UserSearchFormValues } from '@/lib/form-schemas'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -21,21 +21,19 @@ type UserInviteSearchProps = {
 
 export function UserInviteSearch({ eventId }: UserInviteSearchProps) {
   const router = useRouter()
-  const form = useForm<UserSearchFormValues>({ defaultValues: { query: '' } })
+  const form = useForm<UserSearchFormValues>({
+    resolver: zodResolver(userSearchSchema),
+    defaultValues: { query: '' },
+  })
   const [users, setUsers] = useState<CurrentUser[]>([])
   const [pendingUserId, setPendingUserId] = useState<string | null>(null)
   const [error, setError] = useState('')
 
   async function search(values: UserSearchFormValues) {
     setError('')
-    const parsed = userSearchSchema.safeParse(values)
-    if (!parsed.success) {
-      applyValidationErrors<UserSearchFormValues>(parsed.error.issues, form.setError)
-      return
-    }
 
     try {
-      const query = encodeURIComponent(parsed.data.query)
+      const query = encodeURIComponent(values.query)
       setUsers(await apiRequest<CurrentUser[]>(`/users/search?q=${query}`))
     } catch {
       setError('Не удалось найти пользователей.')
@@ -66,7 +64,11 @@ export function UserInviteSearch({ eventId }: UserInviteSearchProps) {
       <CardContent className='space-y-4'>
         <form onSubmit={form.handleSubmit(search)}>
           <FieldGroup>
-            <ValidatedField htmlFor='user-search' label='Поиск' error={form.formState.errors.query?.message}>
+            <ValidatedField
+              htmlFor='user-search'
+              label='Поиск'
+              error={form.formState.errors.query?.message}
+            >
               <div className='flex gap-2'>
                 <Input
                   id='user-search'

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
 import { useForm, useWatch } from 'react-hook-form'
 import { CalendarIcon, CalendarPlus, Save } from 'lucide-react'
@@ -9,7 +10,6 @@ import type { EventFormat, EventItem } from '@/lib/api'
 import { apiRequest } from '@/lib/api'
 import { formatLocalDate } from '@/lib/date-format'
 import { eventFormatLabels, toDateTimeLocal } from '@/lib/event-labels'
-import { applyValidationErrors } from '@/lib/form-errors'
 import { eventFormSchema, type EventFormValues } from '@/lib/form-schemas'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -37,6 +37,7 @@ type EventFormProps = {
 export function EventForm({ event, mode }: EventFormProps) {
   const router = useRouter()
   const form = useForm<EventFormValues>({
+    resolver: zodResolver(eventFormSchema),
     defaultValues: getDefaultValues(event),
   })
   const [error, setError] = useState('')
@@ -44,18 +45,12 @@ export function EventForm({ event, mode }: EventFormProps) {
   async function submit(values: EventFormValues) {
     setError('')
 
-    const parsed = eventFormSchema.safeParse(values)
-    if (!parsed.success) {
-      applyValidationErrors<EventFormValues>(parsed.error.issues, form.setError)
-      return
-    }
-
     try {
       const savedEvent = await apiRequest<EventItem>(
         mode === 'create' ? '/events' : `/events/${event?.id}`,
         {
           method: mode === 'create' ? 'POST' : 'PATCH',
-          body: JSON.stringify(toEventPayload(parsed.data)),
+          body: JSON.stringify(toEventPayload(values)),
         },
       )
 
@@ -87,7 +82,11 @@ export function EventForm({ event, mode }: EventFormProps) {
           ) : (
             <Save className='h-4 w-4' />
           )}
-          {form.formState.isSubmitting ? 'Сохранение...' : mode === 'create' ? 'Создать' : 'Сохранить'}
+          {form.formState.isSubmitting
+            ? 'Сохранение...'
+            : mode === 'create'
+              ? 'Создать'
+              : 'Сохранить'}
         </Button>
         {error ? (
           <Alert variant='destructive' className='w-auto'>
@@ -106,7 +105,11 @@ function EventTitleAndFormat({ form }: { form: EventFormApi }) {
 
   return (
     <div className='grid gap-5 lg:grid-cols-[1.2fr_0.8fr]'>
-      <ValidatedField htmlFor='event-title' label='Название' error={form.formState.errors.title?.message}>
+      <ValidatedField
+        htmlFor='event-title'
+        label='Название'
+        error={form.formState.errors.title?.message}
+      >
         <Input
           id='event-title'
           className='h-12'
@@ -131,7 +134,10 @@ function EventTitleAndFormat({ form }: { form: EventFormApi }) {
             })
           }
         >
-          <SelectTrigger className='h-12 w-full' aria-invalid={Boolean(form.formState.errors.format)}>
+          <SelectTrigger
+            className='h-12 w-full'
+            aria-invalid={Boolean(form.formState.errors.format)}
+          >
             <SelectValue>{eventFormatLabels[selectedFormat]}</SelectValue>
           </SelectTrigger>
           <SelectContent>
@@ -149,7 +155,11 @@ function EventTitleAndFormat({ form }: { form: EventFormApi }) {
 
 function EventDescription({ form }: { form: EventFormApi }) {
   return (
-    <ValidatedField htmlFor='event-description' label='Описание' error={form.formState.errors.description?.message}>
+    <ValidatedField
+      htmlFor='event-description'
+      label='Описание'
+      error={form.formState.errors.description?.message}
+    >
       <Textarea
         id='event-description'
         className='min-h-40 resize-y'
@@ -264,7 +274,11 @@ function EventDateTimeField({
 function EventLocationAndLimit({ form }: { form: EventFormApi }) {
   return (
     <div className='grid gap-5 md:grid-cols-[1fr_220px]'>
-      <ValidatedField htmlFor='event-location' label='Место или ссылка' error={form.formState.errors.location?.message}>
+      <ValidatedField
+        htmlFor='event-location'
+        label='Место или ссылка'
+        error={form.formState.errors.location?.message}
+      >
         <Input
           id='event-location'
           className='h-12'
@@ -274,7 +288,11 @@ function EventLocationAndLimit({ form }: { form: EventFormApi }) {
           {...form.register('location')}
         />
       </ValidatedField>
-      <ValidatedField htmlFor='event-participant-limit' label='Лимит мест' error={form.formState.errors.participantLimit?.message}>
+      <ValidatedField
+        htmlFor='event-participant-limit'
+        label='Лимит мест'
+        error={form.formState.errors.participantLimit?.message}
+      >
         <Input
           id='event-participant-limit'
           min={1}

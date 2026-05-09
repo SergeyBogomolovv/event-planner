@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { eventStatusLabels } from '@/lib/event-labels'
 import { formatParticipantDate, participantStatusLabels } from '@/lib/participant-labels'
-import { getEvent, getManageParticipants } from '@/lib/server-api'
+import { getEvent, getManageParticipants, ServerApiRequestError } from '@/lib/server-api'
 
 type ManageParticipantsPageProps = {
   params: Promise<{ eventId: string }>
@@ -16,11 +16,11 @@ type ManageParticipantsPageProps = {
 export default async function ManageParticipantsPage({ params }: ManageParticipantsPageProps) {
   const { eventId } = await params
   const [event, participants] = await Promise.all([
-    getEvent(eventId).catch(() => null),
-    getManageParticipants(eventId).catch(() => null),
+    getEventOrNotFound(eventId),
+    getManageParticipantsOrNotFound(eventId),
   ])
 
-  if (!event || !participants || !event.relation.isOrganizer) {
+  if (!event.relation.isOrganizer) {
     notFound()
   }
 
@@ -85,4 +85,28 @@ export default async function ManageParticipantsPage({ params }: ManageParticipa
       </div>
     </div>
   )
+}
+
+async function getEventOrNotFound(eventId: string) {
+  try {
+    return await getEvent(eventId)
+  } catch (error) {
+    if (error instanceof ServerApiRequestError && [403, 404].includes(error.status)) {
+      notFound()
+    }
+
+    throw error
+  }
+}
+
+async function getManageParticipantsOrNotFound(eventId: string) {
+  try {
+    return await getManageParticipants(eventId)
+  } catch (error) {
+    if (error instanceof ServerApiRequestError && [403, 404].includes(error.status)) {
+      notFound()
+    }
+
+    throw error
+  }
 }

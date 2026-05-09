@@ -19,10 +19,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <main className='min-h-screen bg-[linear-gradient(180deg,#f8faf7_0%,#eef4f1_45%,#f7f7f2_100%)] text-zinc-950'>
+      <div className='pointer-events-none fixed inset-0 bg-[linear-gradient(90deg,rgba(24,24,27,0.035)_1px,transparent_1px),linear-gradient(180deg,rgba(24,24,27,0.035)_1px,transparent_1px)] bg-[size:56px_56px]' />
       <div className='mx-auto flex min-h-screen max-w-7xl'>
-        <aside className='hidden w-72 border-r border-zinc-200/80 bg-white/90 p-6 backdrop-blur md:block'>
+        <aside className='relative hidden w-72 border-r border-zinc-200/80 bg-white/90 p-6 backdrop-blur md:block'>
           <Link href='/dashboard' className='flex items-center gap-3 text-lg font-semibold'>
-            <span className='grid size-9 place-items-center rounded-lg bg-zinc-950 text-white'>
+            <span className='grid size-9 place-items-center rounded-lg bg-zinc-950 text-teal-200 shadow-sm'>
               <CalendarDays className='h-5 w-5' />
             </span>
             <span>Event Planner</span>
@@ -46,7 +47,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </aside>
 
-        <section className='flex min-w-0 flex-1 flex-col'>
+        <section className='relative flex min-w-0 flex-1 flex-col'>
           <header className='sticky top-0 z-20 flex items-center justify-between border-b border-zinc-200/80 bg-white/85 px-6 py-4 backdrop-blur'>
             <div className='flex items-center gap-3'>
               <CalendarDays className='h-5 w-5' />

@@ -1,8 +1,4 @@
-import {
-  Field,
-  FieldError,
-  FieldLabel,
-} from '@/components/ui/field'
+import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 
 type ValidatedFieldProps = {
   children: React.ReactNode

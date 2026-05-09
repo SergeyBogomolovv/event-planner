@@ -5,8 +5,14 @@ export const loginSchema = z.object({
   password: z.string().min(8, 'Минимум 8 символов'),
 })
 
-export const registerSchema = loginSchema.extend({
-  name: z.string().trim().min(2, 'Введите имя').max(120, 'Слишком длинное имя'),
+const authFormBaseSchema = loginSchema.extend({
+  name: z.string().trim().max(120, 'Слишком длинное имя').optional(),
+})
+
+export const registerSchema = authFormBaseSchema.superRefine((value, ctx) => {
+  if (!value.name || value.name.length < 2) {
+    ctx.addIssue({ code: 'custom', path: ['name'], message: 'Введите имя' })
+  }
 })
 
 export const profileSchema = z.object({
@@ -54,7 +60,7 @@ export const userSearchSchema = z.object({
   query: z.string().trim().min(2, 'Введите минимум 2 символа').max(120, 'Слишком длинный запрос'),
 })
 
-export type AuthFormValues = z.infer<typeof registerSchema>
+export type AuthFormValues = z.infer<typeof authFormBaseSchema>
 export type ProfileFormValues = z.infer<typeof profileSchema>
 export type EventFormValues = z.infer<typeof eventFormSchema>
 export type UserSearchFormValues = z.infer<typeof userSearchSchema>

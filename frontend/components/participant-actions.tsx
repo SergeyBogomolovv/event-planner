@@ -28,20 +28,28 @@ export function ParticipantActions({ eventId, participant, mode }: ParticipantAc
     setPending(true)
     try {
       if (mode === 'remove') {
-        await apiRequest<ParticipantItem>(`/events/${eventId}/participants/${participant.user.id}`, {
-          method: 'DELETE',
-        })
+        await apiRequest<ParticipantItem>(
+          `/events/${eventId}/participants/${participant.user.id}`,
+          {
+            method: 'DELETE',
+          },
+        )
       } else {
-        await apiRequest<ParticipantItem>(`/events/${eventId}/participants/${participant.user.id}/leave`, {
-          method: 'POST',
-        })
+        await apiRequest<ParticipantItem>(
+          `/events/${eventId}/participants/${participant.user.id}/leave`,
+          {
+            method: 'POST',
+          },
+        )
         router.push('/events/participating')
         router.refresh()
         return
       }
       router.refresh()
     } catch {
-      setError(mode === 'remove' ? 'Не удалось удалить участника.' : 'Не удалось отказаться от участия.')
+      setError(
+        mode === 'remove' ? 'Не удалось удалить участника.' : 'Не удалось отказаться от участия.',
+      )
     } finally {
       setPending(false)
     }

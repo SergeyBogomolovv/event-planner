@@ -73,7 +73,10 @@ type AppSidebarNavProps = {
   isAdmin?: boolean
 }
 
-export function AppSidebarNav({ unreadNotificationsCount = 0, isAdmin = false }: AppSidebarNavProps) {
+export function AppSidebarNav({
+  unreadNotificationsCount = 0,
+  isAdmin = false,
+}: AppSidebarNavProps) {
   const items = isAdmin ? [...navigationItems, adminNavigationItem] : navigationItems
 
   return (

@@ -6,7 +6,7 @@ import { ParticipantActions } from '@/components/participant-actions'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { participantStatusLabels } from '@/lib/participant-labels'
-import { getCurrentUser, getEvent, getParticipants } from '@/lib/server-api'
+import { getCurrentUser, getEvent, getParticipants, ServerApiRequestError } from '@/lib/server-api'
 
 type ParticipantsPageProps = {
   params: Promise<{ eventId: string }>
@@ -16,13 +16,9 @@ export default async function ParticipantsPage({ params }: ParticipantsPageProps
   const { eventId } = await params
   const [user, event, participants] = await Promise.all([
     getCurrentUser(),
-    getEvent(eventId).catch(() => null),
-    getParticipants(eventId).catch(() => null),
+    getEventOrNotFound(eventId),
+    getParticipantsOrNotFound(eventId),
   ])
-
-  if (!event || !participants) {
-    notFound()
-  }
 
   return (
     <div className='space-y-6'>
@@ -72,4 +68,28 @@ export default async function ParticipantsPage({ params }: ParticipantsPageProps
       )}
     </div>
   )
+}
+
+async function getEventOrNotFound(eventId: string) {
+  try {
+    return await getEvent(eventId)
+  } catch (error) {
+    if (error instanceof ServerApiRequestError && [403, 404].includes(error.status)) {
+      notFound()
+    }
+
+    throw error
+  }
+}
+
+async function getParticipantsOrNotFound(eventId: string) {
+  try {
+    return await getParticipants(eventId)
+  } catch (error) {
+    if (error instanceof ServerApiRequestError && [403, 404].includes(error.status)) {
+      notFound()
+    }
+
+    throw error
+  }
 }

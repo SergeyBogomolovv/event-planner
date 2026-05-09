@@ -17,6 +17,16 @@ type ServerApiOptions = {
   redirectToLogin?: boolean
 }
 
+export class ServerApiRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message)
+    this.name = 'ServerApiRequestError'
+  }
+}
+
 export async function serverApiRequest<T>(
   path: string,
   init: RequestInit = {},
@@ -35,7 +45,7 @@ export async function serverApiRequest<T>(
     if (options.redirectToLogin && response.status === 401) {
       redirect('/login')
     }
-    throw new Error(`Server API request failed: ${response.status}`)
+    throw new ServerApiRequestError(`Server API request failed: ${response.status}`, response.status)
   }
 
   return response.json() as Promise<T>

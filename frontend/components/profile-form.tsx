@@ -1,11 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { Save } from 'lucide-react'
 import { apiRequest, CurrentUser } from '@/lib/api'
-import { applyValidationErrors } from '@/lib/form-errors'
 import { profileSchema, type ProfileFormValues } from '@/lib/form-schemas'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -17,6 +17,7 @@ import { ValidatedField } from '@/components/validated-field'
 export function ProfileForm({ user }: { user: CurrentUser }) {
   const router = useRouter()
   const form = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileSchema),
     defaultValues: {
       name: user.name,
       email: user.email,
@@ -29,16 +30,10 @@ export function ProfileForm({ user }: { user: CurrentUser }) {
     setMessage('')
     setError('')
 
-    const parsed = profileSchema.safeParse(values)
-    if (!parsed.success) {
-      applyValidationErrors<ProfileFormValues>(parsed.error.issues, form.setError)
-      return
-    }
-
     try {
       const updatedProfile = await apiRequest<CurrentUser>('/users/me', {
         method: 'PATCH',
-        body: JSON.stringify(parsed.data),
+        body: JSON.stringify(values),
       })
       form.reset({
         name: updatedProfile.name,

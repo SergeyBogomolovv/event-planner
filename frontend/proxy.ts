@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const protectedRoutes = ['/dashboard', '/profile', '/events', '/invitations']
+const protectedRoutes = ['/dashboard', '/profile', '/events', '/invitations', '/notifications', '/admin']
 const guestRoutes = ['/login', '/register']
 
 export function proxy(request: NextRequest) {
@@ -24,5 +24,14 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/profile/:path*', '/events/:path*', '/invitations/:path*', '/login', '/register'],
+  matcher: [
+    '/dashboard/:path*',
+    '/profile/:path*',
+    '/events/:path*',
+    '/invitations/:path*',
+    '/notifications/:path*',
+    '/admin/:path*',
+    '/login',
+    '/register',
+  ],
 }

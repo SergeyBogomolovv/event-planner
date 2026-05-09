@@ -39,7 +39,11 @@ export function InvitationActions({ invitation, currentUserId }: InvitationActio
   return (
     <div className='space-y-3'>
       <div className='flex flex-wrap gap-2'>
-        <Button className='gap-2' disabled={pendingAction !== null} onClick={() => runAction('accept')}>
+        <Button
+          className='gap-2'
+          disabled={pendingAction !== null}
+          onClick={() => runAction('accept')}
+        >
           <CheckCircle2 className='h-4 w-4' />
           {pendingAction === 'accept' ? 'Принятие...' : 'Принять'}
         </Button>

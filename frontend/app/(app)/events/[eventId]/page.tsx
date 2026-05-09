@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { eventFormatLabels, eventStatusLabels, formatEventDate } from '@/lib/event-labels'
-import { getEvent } from '@/lib/server-api'
+import { getEvent, ServerApiRequestError } from '@/lib/server-api'
 
 type EventPageProps = {
   params: Promise<{ eventId: string }>
@@ -15,11 +15,7 @@ type EventPageProps = {
 
 export default async function EventPage({ params }: EventPageProps) {
   const { eventId } = await params
-  const event = await getEvent(eventId).catch(() => null)
-
-  if (!event) {
-    notFound()
-  }
+  const event = await getEventOrNotFound(eventId)
 
   return (
     <div className='space-y-6'>
@@ -79,6 +75,18 @@ export default async function EventPage({ params }: EventPageProps) {
       </div>
     </div>
   )
+}
+
+async function getEventOrNotFound(eventId: string) {
+  try {
+    return await getEvent(eventId)
+  } catch (error) {
+    if (error instanceof ServerApiRequestError && [403, 404].includes(error.status)) {
+      notFound()
+    }
+
+    throw error
+  }
 }
 
 function Info({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
