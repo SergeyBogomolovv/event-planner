@@ -1,7 +1,13 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { API_BASE_URL } from './api-config'
-import type { CurrentUser, EventItem, InvitationItem, ParticipantItem } from './api'
+import type {
+  CurrentUser,
+  EventItem,
+  InvitationItem,
+  NotificationItem,
+  ParticipantItem,
+} from './api'
 
 type ServerApiOptions = {
   redirectToLogin?: boolean
@@ -69,6 +75,19 @@ export function getManageParticipants(eventId: string) {
     {},
     { redirectToLogin: true },
   )
+}
+
+export function getNotifications() {
+  return serverApiRequest<NotificationItem[]>('/notifications', {}, { redirectToLogin: true })
+}
+
+export async function getUnreadNotificationsCount() {
+  const response = await serverApiRequest<{ count: number }>(
+    '/notifications/unread-count',
+    {},
+    { redirectToLogin: true },
+  )
+  return response.count
 }
 
 async function getCookieHeader() {

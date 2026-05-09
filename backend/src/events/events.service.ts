@@ -5,11 +5,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import {
   EventParticipant,
   EventParticipantStatus,
 } from '../participants/event-participant.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 import { User, UserRole } from '../users/user.entity';
 import { CreateEventDto, UpdateEventDto } from './dto';
 import { Event, EventStatus } from './event.entity';
@@ -26,6 +27,7 @@ export class EventsService {
     private readonly events: Repository<Event>,
     @InjectRepository(EventParticipant)
     private readonly participants: Repository<EventParticipant>,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(dto: CreateEventDto, user: User): Promise<Event> {
@@ -50,24 +52,27 @@ export class EventsService {
 
   findMine(user: User): Promise<Event[]> {
     return this.events.find({
-      where: { organizerId: user.id, deletedAt: IsNull() },
+      where: { organizerId: user.id },
       order: { startsAt: 'ASC', createdAt: 'DESC' },
     });
   }
 
   async findParticipating(user: User): Promise<Event[]> {
     const organizedEvents = await this.events.find({
-      where: { organizerId: user.id, deletedAt: IsNull() },
+      where: { organizerId: user.id },
       order: { startsAt: 'ASC', createdAt: 'DESC' },
     });
-    const participants = await this.participants.find({
-      where: {
-        userId: user.id,
+    const participants = await this.participants
+      .createQueryBuilder('participant')
+      .innerJoinAndSelect('participant.event', 'event')
+      .innerJoinAndSelect('event.organizer', 'organizer')
+      .where('participant.user_id = :userId', { userId: user.id })
+      .andWhere('participant.status = :status', {
         status: EventParticipantStatus.Accepted,
-        event: { deletedAt: IsNull() },
-      },
-      order: { event: { startsAt: 'ASC' } },
-    });
+      })
+      .orderBy('event.starts_at', 'ASC')
+      .addOrderBy('event.created_at', 'DESC')
+      .getMany();
 
     const eventsById = new Map<string, Event>();
     for (const event of organizedEvents) {
@@ -106,7 +111,9 @@ export class EventsService {
     this.validateDateRange(this.resolveDateRange(event, dto));
     this.applyUpdates(event, dto);
 
-    return this.events.save(event);
+    const updatedEvent = await this.events.save(event);
+    await this.notificationsService.notifyEventUpdated(updatedEvent);
+    return updatedEvent;
   }
 
   async publish(id: string, user: User): Promise<Event> {
@@ -130,7 +137,9 @@ export class EventsService {
       'Event cannot be cancelled',
     );
     event.status = EventStatus.Cancelled;
-    return this.events.save(event);
+    const cancelledEvent = await this.events.save(event);
+    await this.notificationsService.notifyEventCancelled(cancelledEvent);
+    return cancelledEvent;
   }
 
   async complete(id: string, user: User): Promise<Event> {
@@ -151,13 +160,13 @@ export class EventsService {
       throw new ForbiddenException('Only organizer or admin can delete event');
     }
 
-    await this.events.softRemove(event);
+    await this.events.delete(event.id);
     return { ok: true };
   }
 
   private async requireEvent(id: string): Promise<Event> {
     const event = await this.events.findOne({
-      where: { id, deletedAt: IsNull() },
+      where: { id },
     });
     if (!event) {
       throw new NotFoundException('Event not found');

@@ -29,7 +29,11 @@ export class EventParticipant {
   @Column({ name: 'event_id' })
   eventId: string;
 
-  @ManyToOne(() => Event, { eager: true, nullable: false })
+  @ManyToOne(() => Event, {
+    eager: true,
+    nullable: false,
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'event_id' })
   event: Event;
 

@@ -4,7 +4,7 @@ import { AppSidebarNav } from '@/components/app-sidebar-link'
 import { LogoutButton } from '@/components/logout-button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { getCurrentUser } from '@/lib/server-api'
+import { getCurrentUser, getUnreadNotificationsCount } from '@/lib/server-api'
 
 const roleLabels = {
   admin: 'Администратор',
@@ -12,7 +12,10 @@ const roleLabels = {
 }
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const user = await getCurrentUser()
+  const [user, unreadNotificationsCount] = await Promise.all([
+    getCurrentUser(),
+    getUnreadNotificationsCount(),
+  ])
 
   return (
     <main className='min-h-screen bg-[linear-gradient(180deg,#f8faf7_0%,#eef4f1_45%,#f7f7f2_100%)] text-zinc-950'>
@@ -24,7 +27,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </span>
             <span>Event Planner</span>
           </Link>
-          <AppSidebarNav />
+          <AppSidebarNav unreadNotificationsCount={unreadNotificationsCount} />
 
           <Separator className='my-6' />
           <div className='rounded-xl bg-muted/70 p-4 text-sm ring-1 ring-border'>

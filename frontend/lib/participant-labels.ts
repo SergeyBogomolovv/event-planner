@@ -1,4 +1,5 @@
 import type { ParticipantStatus } from './api'
+import { formatLocalDate } from './date-format'
 
 export const participantStatusLabels: Record<ParticipantStatus, string> = {
   invited: 'Приглашён',
@@ -12,11 +13,11 @@ export function formatParticipantDate(value: string | null) {
     return 'Не указано'
   }
 
-  return new Intl.DateTimeFormat('ru-RU', {
+  return formatLocalDate(value, {
     day: '2-digit',
     month: 'long',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-  }).format(new Date(value))
+  })
 }

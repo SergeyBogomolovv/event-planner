@@ -7,6 +7,7 @@ import { CalendarIcon, CalendarPlus, Save } from 'lucide-react'
 import { ru } from 'date-fns/locale'
 import type { EventFormat, EventItem } from '@/lib/api'
 import { apiRequest } from '@/lib/api'
+import { formatLocalDate } from '@/lib/date-format'
 import { eventFormatLabels, toDateTimeLocal } from '@/lib/event-labels'
 import { applyValidationErrors } from '@/lib/form-errors'
 import { eventFormSchema, type EventFormValues } from '@/lib/form-schemas'
@@ -338,9 +339,9 @@ function combineDateAndTime(date: Date, time: string) {
 }
 
 function formatDateLabel(date: Date) {
-  return new Intl.DateTimeFormat('ru-RU', {
+  return formatLocalDate(date, {
     day: '2-digit',
     month: 'long',
     year: 'numeric',
-  }).format(date)
+  })
 }

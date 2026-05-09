@@ -1,4 +1,5 @@
 import type { EventFormat, EventStatus } from './api'
+import { formatLocalDate } from './date-format'
 
 export const eventStatusLabels: Record<EventStatus, string> = {
   draft: 'Черновик',
@@ -14,13 +15,13 @@ export const eventFormatLabels: Record<EventFormat, string> = {
 }
 
 export function formatEventDate(value: string) {
-  return new Intl.DateTimeFormat('ru-RU', {
+  return formatLocalDate(value, {
     day: '2-digit',
     month: 'long',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-  }).format(new Date(value))
+  })
 }
 
 export function toDateTimeLocal(value: string | null) {

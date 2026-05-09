@@ -14,6 +14,11 @@ const defaults = {
   JWT_ACCESS_SECRET: 'dev-access-secret-change-me',
   JWT_REFRESH_SECRET: 'dev-refresh-secret-change-me',
   COOKIE_SECURE: false,
+  MAIL_HOST: '',
+  MAIL_PORT: 587,
+  MAIL_USER: '',
+  MAIL_PASSWORD: '',
+  MAIL_FROM: '',
 };
 
 export function validateEnv(env: Env) {
@@ -31,6 +36,11 @@ export function validateEnv(env: Env) {
     JWT_ACCESS_SECRET: env.JWT_ACCESS_SECRET ?? defaults.JWT_ACCESS_SECRET,
     JWT_REFRESH_SECRET: env.JWT_REFRESH_SECRET ?? defaults.JWT_REFRESH_SECRET,
     COOKIE_SECURE: booleanValue(env.COOKIE_SECURE, defaults.COOKIE_SECURE),
+    MAIL_HOST: env.MAIL_HOST ?? defaults.MAIL_HOST,
+    MAIL_PORT: numberValue(env.MAIL_PORT, defaults.MAIL_PORT),
+    MAIL_USER: env.MAIL_USER ?? defaults.MAIL_USER,
+    MAIL_PASSWORD: env.MAIL_PASSWORD ?? defaults.MAIL_PASSWORD,
+    MAIL_FROM: env.MAIL_FROM ?? defaults.MAIL_FROM,
   };
 }
 

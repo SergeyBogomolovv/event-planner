@@ -68,7 +68,7 @@ export default async function EventPage({ params }: EventPageProps) {
             <Link href={`/events/${event.id}/participants`} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
               Участники
             </Link>
-            {event.relation.isOrganizer ? (
+            {event.relation.isOrganizer && event.status === 'active' ? (
               <Link href={`/events/${event.id}/participants/manage`} className={buttonVariants({ size: 'sm' })}>
                 Управлять
               </Link>

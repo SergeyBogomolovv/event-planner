@@ -7,6 +7,7 @@ import {
   EventParticipantStatus,
 } from './event-participant.entity';
 import { ParticipantsService } from './participants.service';
+import type { NotificationsService } from '../notifications/notifications.service';
 
 const now = new Date('2026-01-01T00:00:00Z');
 
@@ -46,6 +47,7 @@ describe('ParticipantsService', () => {
     const usersStore = params.users ?? [organizerUser, invitedUser, otherUser];
     const participantsStore = [...(params.participants ?? [])];
 
+    let invitationsQuery: ParticipantsQueryBuilderMock | null = null;
     const participantsRepo = {
       create: jest.fn((data: Partial<EventParticipant>): EventParticipant => {
         const event = eventsStore.find((item) => item.id === data.eventId);
@@ -85,9 +87,6 @@ describe('ParticipantsService', () => {
         Promise.resolve(
           participantsStore.filter((participant) =>
             Object.entries(where).every(([key, value]) => {
-              if (key === 'event') {
-                return participant.event.deletedAt === null;
-              }
               return participant[key as keyof EventParticipant] === value;
             }),
           ),
@@ -125,8 +124,7 @@ describe('ParticipantsService', () => {
                 .filter(
                   (participant) =>
                     participant.userId === invitedUser.id &&
-                    participant.status === EventParticipantStatus.Invited &&
-                    participant.event.deletedAt === null,
+                    participant.status === EventParticipantStatus.Invited,
                 )
                 .sort(
                   (left, right) =>
@@ -136,6 +134,7 @@ describe('ParticipantsService', () => {
           ),
         };
 
+        invitationsQuery = query;
         return query;
       }),
     };
@@ -143,9 +142,7 @@ describe('ParticipantsService', () => {
     const eventsRepo = {
       findOne: jest.fn(({ where }: { where: Partial<Event> }) =>
         Promise.resolve(
-          eventsStore.find(
-            (event) => event.id === where.id && event.deletedAt === null,
-          ) ?? null,
+          eventsStore.find((event) => event.id === where.id) ?? null,
         ),
       ),
     };
@@ -158,18 +155,29 @@ describe('ParticipantsService', () => {
       ),
     };
 
+    const notificationsService = {
+      notifyEventInvitation: jest.fn(() => Promise.resolve()),
+      notifyParticipantAccepted: jest.fn(() => Promise.resolve()),
+      notifyParticipantDeclined: jest.fn(() => Promise.resolve()),
+    };
+
     return {
       service: new ParticipantsService(
         participantsRepo as unknown as Repository<EventParticipant>,
         eventsRepo as unknown as Repository<Event>,
         usersRepo as unknown as Repository<User>,
+        notificationsService as unknown as NotificationsService,
       ),
       participantsStore,
+      notificationsService,
+      getInvitationsQuery: () => invitationsQuery,
     };
   }
 
   it('allows organizer to invite registered user', async () => {
-    const { service, participantsStore } = createService({});
+    const { service, participantsStore, notificationsService } = createService(
+      {},
+    );
 
     const participant = await service.invite(
       'event-1',
@@ -179,6 +187,9 @@ describe('ParticipantsService', () => {
 
     expect(participant.status).toBe(EventParticipantStatus.Invited);
     expect(participantsStore).toHaveLength(1);
+    expect(notificationsService.notifyEventInvitation).toHaveBeenCalledWith(
+      participant,
+    );
   });
 
   it('prevents non-organizer from inviting', async () => {
@@ -191,7 +202,9 @@ describe('ParticipantsService', () => {
 
   it('allows invited user to accept invitation', async () => {
     const participant = createParticipant();
-    const { service } = createService({ participants: [participant] });
+    const { service, notificationsService } = createService({
+      participants: [participant],
+    });
 
     const accepted = await service.accept(
       'event-1',
@@ -201,6 +214,9 @@ describe('ParticipantsService', () => {
 
     expect(accepted.status).toBe(EventParticipantStatus.Accepted);
     expect(accepted.respondedAt).toBeInstanceOf(Date);
+    expect(notificationsService.notifyParticipantAccepted).toHaveBeenCalledWith(
+      accepted,
+    );
   });
 
   it('does not exceed participant limit', async () => {
@@ -245,20 +261,11 @@ describe('ParticipantsService', () => {
     expect(result.participants[0].id).toBe('accepted-1');
   });
 
-  it('hides invitations for deleted events', async () => {
-    const deletedEvent = createEvent({
-      id: 'deleted-event',
-      deletedAt: now,
-    });
+  it('returns invitations for existing events', async () => {
     const activeEvent = createEvent({ id: 'active-event' });
     const { service } = createService({
-      events: [deletedEvent, activeEvent],
+      events: [activeEvent],
       participants: [
-        createParticipant({
-          id: 'deleted-invitation',
-          eventId: deletedEvent.id,
-          event: deletedEvent,
-        }),
         createParticipant({
           id: 'active-invitation',
           eventId: activeEvent.id,
@@ -271,6 +278,21 @@ describe('ParticipantsService', () => {
 
     expect(invitations).toHaveLength(1);
     expect(invitations[0].id).toBe('active-invitation');
+  });
+
+  it('loads event organizer for invitation response mapping', async () => {
+    const { service, getInvitationsQuery } = createService({
+      participants: [createParticipant()],
+    });
+
+    await service.findInvitations(invitedUser);
+
+    const query = getInvitationsQuery();
+    expect(query).not.toBeNull();
+    expect(query.innerJoinAndSelect).toHaveBeenCalledWith(
+      'event.organizer',
+      'organizer',
+    );
   });
 });
 
@@ -303,7 +325,6 @@ function createEvent(overrides: Partial<Event> = {}): Event {
     status: EventStatus.Active,
     createdAt: now,
     updatedAt: now,
-    deletedAt: null,
     ...overrides,
   };
 }

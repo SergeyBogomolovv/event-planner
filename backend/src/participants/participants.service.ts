@@ -5,8 +5,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Event, EventStatus } from '../events/event.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 import { User } from '../users/user.entity';
 import {
   EventParticipant,
@@ -22,19 +23,20 @@ export class ParticipantsService {
     private readonly events: Repository<Event>,
     @InjectRepository(User)
     private readonly users: Repository<User>,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async findInvitations(user: User): Promise<EventParticipant[]> {
     return this.participants
       .createQueryBuilder('participant')
       .innerJoinAndSelect('participant.event', 'event')
+      .innerJoinAndSelect('event.organizer', 'organizer')
       .innerJoinAndSelect('participant.user', 'user')
       .innerJoinAndSelect('participant.invitedBy', 'invitedBy')
-      .where('participant.userId = :userId', { userId: user.id })
+      .where('participant.user_id = :userId', { userId: user.id })
       .andWhere('participant.status = :status', {
         status: EventParticipantStatus.Invited,
       })
-      .andWhere('event.deletedAt IS NULL')
       .orderBy('participant.invitedAt', 'DESC')
       .getMany();
   }
@@ -75,10 +77,12 @@ export class ParticipantsService {
       existing.invitedAt = new Date();
       existing.respondedAt = null;
       existing.removedAt = null;
-      return this.participants.save(existing);
+      const saved = await this.participants.save(existing);
+      await this.notificationsService.notifyEventInvitation(saved);
+      return saved;
     }
 
-    return this.participants.save(
+    const participant = await this.participants.save(
       this.participants.create({
         eventId,
         event,
@@ -92,6 +96,8 @@ export class ParticipantsService {
         removedAt: null,
       }),
     );
+    await this.notificationsService.notifyEventInvitation(participant);
+    return participant;
   }
 
   async findPublicList(eventId: string, user: User) {
@@ -138,7 +144,9 @@ export class ParticipantsService {
     participant.status = EventParticipantStatus.Accepted;
     participant.respondedAt = new Date();
     participant.removedAt = null;
-    return this.participants.save(participant);
+    const saved = await this.participants.save(participant);
+    await this.notificationsService.notifyParticipantAccepted(saved);
+    return saved;
   }
 
   async decline(eventId: string, userId: string, user: User) {
@@ -155,7 +163,9 @@ export class ParticipantsService {
     participant.status = EventParticipantStatus.Declined;
     participant.respondedAt = new Date();
     participant.removedAt = null;
-    return this.participants.save(participant);
+    const saved = await this.participants.save(participant);
+    await this.notificationsService.notifyParticipantDeclined(saved);
+    return saved;
   }
 
   async leave(eventId: string, userId: string, user: User) {
@@ -187,7 +197,7 @@ export class ParticipantsService {
 
   private async requireEvent(eventId: string) {
     const event = await this.events.findOne({
-      where: { id: eventId, deletedAt: IsNull() },
+      where: { id: eventId },
     });
     if (!event) {
       throw new NotFoundException('Event not found');

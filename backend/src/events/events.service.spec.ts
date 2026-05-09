@@ -4,6 +4,7 @@ import {
   EventParticipant,
   EventParticipantStatus,
 } from '../participants/event-participant.entity';
+import type { NotificationsService } from '../notifications/notifications.service';
 import { User, UserRole, UserStatus } from '../users/user.entity';
 import { Event, EventFormat, EventStatus } from './event.entity';
 import { EventsService } from './events.service';
@@ -32,6 +33,15 @@ const otherUser: User = {
   updatedAt: now,
 };
 
+type ParticipantsQueryBuilderMock = {
+  innerJoinAndSelect: jest.MockedFunction<() => ParticipantsQueryBuilderMock>;
+  where: jest.MockedFunction<() => ParticipantsQueryBuilderMock>;
+  andWhere: jest.MockedFunction<() => ParticipantsQueryBuilderMock>;
+  orderBy: jest.MockedFunction<() => ParticipantsQueryBuilderMock>;
+  addOrderBy: jest.MockedFunction<() => ParticipantsQueryBuilderMock>;
+  getMany: jest.MockedFunction<() => Promise<EventParticipant[]>>;
+};
+
 describe('EventsService', () => {
   function createService(initialEvents: Event[] = []) {
     const store = [...initialEvents];
@@ -46,7 +56,6 @@ describe('EventsService', () => {
           status: event.status ?? EventStatus.Draft,
           createdAt: event.createdAt ?? now,
           updatedAt: now,
-          deletedAt: event.deletedAt ?? null,
         };
         const index = store.findIndex((item) => item.id === saved.id);
         if (index >= 0) {
@@ -59,39 +68,43 @@ describe('EventsService', () => {
       find: jest.fn(() =>
         Promise.resolve(
           store
-            .filter(
-              (event) =>
-                event.organizerId === organizerUser.id &&
-                event.deletedAt === null,
-            )
+            .filter((event) => event.organizerId === organizerUser.id)
             .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime()),
         ),
       ),
       findOne: jest.fn(({ where }: { where: { id: string } }) =>
-        Promise.resolve(
-          store.find(
-            (event) => event.id === where.id && event.deletedAt === null,
-          ) ?? null,
-        ),
+        Promise.resolve(store.find((event) => event.id === where.id) ?? null),
       ),
-      softRemove: jest.fn((event: Event): Promise<Event> => {
-        event.deletedAt = now;
-        return Promise.resolve(event);
+      delete: jest.fn((eventId: string): Promise<{ affected: number }> => {
+        const index = store.findIndex((event) => event.id === eventId);
+        if (index >= 0) {
+          store.splice(index, 1);
+          return Promise.resolve({ affected: 1 });
+        }
+        return Promise.resolve({ affected: 0 });
       }),
     };
     const participantsRepo = {
-      find: jest.fn(({ where }: { where: Partial<EventParticipant> }) =>
-        Promise.resolve(
-          participantStore.filter((participant) =>
-            Object.entries(where).every(([key, value]) => {
-              if (key === 'event') {
-                return participant.event.deletedAt === null;
-              }
-              return participant[key as keyof EventParticipant] === value;
-            }),
+      createQueryBuilder: jest.fn(() => {
+        const query: ParticipantsQueryBuilderMock = {
+          innerJoinAndSelect: jest.fn(() => query),
+          where: jest.fn(() => query),
+          andWhere: jest.fn(() => query),
+          orderBy: jest.fn(() => query),
+          addOrderBy: jest.fn(() => query),
+          getMany: jest.fn(() =>
+            Promise.resolve(
+              participantStore.filter(
+                (participant) =>
+                  participant.userId === organizerUser.id &&
+                  participant.status === EventParticipantStatus.Accepted,
+              ),
+            ),
           ),
-        ),
-      ),
+        };
+
+        return query;
+      }),
       findOne: jest.fn(({ where }: { where: Partial<EventParticipant> }) =>
         Promise.resolve(
           participantStore.find((participant) =>
@@ -103,14 +116,21 @@ describe('EventsService', () => {
         ),
       ),
     };
+    const notificationsService = {
+      notifyEventUpdated: jest.fn(() => Promise.resolve()),
+      notifyEventCancelled: jest.fn(() => Promise.resolve()),
+    };
+
     return {
       service: new EventsService(
         repo as unknown as Repository<Event>,
         participantsRepo as unknown as Repository<EventParticipant>,
+        notificationsService as unknown as NotificationsService,
       ),
       repo,
       store,
       participantStore,
+      notificationsService,
     };
   }
 
@@ -182,7 +202,9 @@ describe('EventsService', () => {
   });
 
   it('allows organizer to clear optional event fields', async () => {
-    const { service, store } = createService([createEvent()]);
+    const { service, store, notificationsService } = createService([
+      createEvent({ status: EventStatus.Active }),
+    ]);
 
     const updated = await service.update(
       'event-1',
@@ -197,6 +219,9 @@ describe('EventsService', () => {
     expect(updated.endsAt).toBeNull();
     expect(updated.location).toBeNull();
     expect(updated.participantLimit).toBeNull();
+    expect(notificationsService.notifyEventUpdated).toHaveBeenCalledWith(
+      updated,
+    );
     expect(store[0]).toMatchObject({
       endsAt: null,
       location: null,
@@ -230,7 +255,7 @@ describe('EventsService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('hides soft-deleted events from main lists', async () => {
+  it('deletes events from main lists', async () => {
     const { service } = createService([createEvent()]);
 
     await service.remove('event-1', organizerUser);
@@ -255,7 +280,6 @@ function createEvent(overrides: Partial<Event> = {}): Event {
     status: EventStatus.Draft,
     createdAt: now,
     updatedAt: now,
-    deletedAt: null,
     ...overrides,
   };
 }

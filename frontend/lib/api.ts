@@ -12,6 +12,12 @@ export type EventStatus = 'draft' | 'active' | 'cancelled' | 'completed'
 export type EventFormat = 'offline' | 'online' | 'hybrid'
 export type EventAction = 'edit' | 'publish' | 'cancel' | 'complete' | 'delete'
 export type ParticipantStatus = 'invited' | 'accepted' | 'declined' | 'removed'
+export type NotificationType =
+  | 'event_invitation'
+  | 'event_updated'
+  | 'event_cancelled'
+  | 'participant_accepted'
+  | 'participant_declined'
 
 export type EventItem = {
   id: string
@@ -59,6 +65,27 @@ export type InvitationItem = {
   updatedAt: string
 }
 
+export type NotificationItem = {
+  id: string
+  type: NotificationType
+  title: string
+  message: string
+  relatedEventId: string | null
+  relatedEvent: EventItem | null
+  readAt: string | null
+  createdAt: string
+}
+
+export class ApiRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message)
+    this.name = 'ApiRequestError'
+  }
+}
+
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
@@ -71,7 +98,7 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
 
   if (!response.ok) {
     const error = await response.text()
-    throw new Error(error || `API request failed: ${response.status}`)
+    throw new ApiRequestError(error || `API request failed: ${response.status}`, response.status)
   }
 
   return response.json() as Promise<T>
