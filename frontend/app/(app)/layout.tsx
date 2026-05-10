@@ -2,14 +2,11 @@ import Link from 'next/link'
 import { CalendarDays } from 'lucide-react'
 import { AppSidebarNav } from '@/components/app-sidebar-link'
 import { LogoutButton } from '@/components/logout-button'
+import { MobileAppNav } from '@/components/mobile-app-nav'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { getCurrentUser, getUnreadNotificationsCount } from '@/lib/server-api'
-
-const roleLabels = {
-  admin: 'Администратор',
-  user: 'Пользователь',
-}
+import { userRoleLabels } from '@/lib/user-labels'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const [user, unreadNotificationsCount] = await Promise.all([
@@ -39,7 +36,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <div className='flex items-start justify-between gap-3'>
                 <p className='min-w-0 break-words font-medium'>{user.name}</p>
                 <Badge variant='outline' className='shrink-0'>
-                  {roleLabels[user.role]}
+                  {userRoleLabels[user.role]}
                 </Badge>
               </div>
               <p className='break-all leading-5 text-muted-foreground'>{user.email}</p>
@@ -49,9 +46,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
         <section className='relative flex min-w-0 flex-1 flex-col'>
           <header className='sticky top-0 z-20 flex items-center justify-between border-b border-zinc-200/80 bg-white/85 px-6 py-4 backdrop-blur'>
-            <div className='flex items-center gap-3'>
-              <CalendarDays className='h-5 w-5' />
-              <span className='font-medium'>Кабинет</span>
+            <div className='flex min-w-0 items-center gap-3'>
+              <MobileAppNav user={user} unreadNotificationsCount={unreadNotificationsCount} />
+              <CalendarDays className='hidden h-5 w-5 md:block' />
+              <span className='truncate font-medium'>Кабинет</span>
             </div>
             <LogoutButton />
           </header>

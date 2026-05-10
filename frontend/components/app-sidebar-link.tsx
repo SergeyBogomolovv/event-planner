@@ -20,9 +20,16 @@ type AppSidebarLinkProps = {
   icon: LucideIcon
   label: string
   badgeCount?: number
+  onNavigate?: () => void
 }
 
-export function AppSidebarLink({ href, icon: Icon, label, badgeCount = 0 }: AppSidebarLinkProps) {
+export function AppSidebarLink({
+  href,
+  icon: Icon,
+  label,
+  badgeCount = 0,
+  onNavigate,
+}: AppSidebarLinkProps) {
   const pathname = usePathname()
   const active = pathname === href || pathname.startsWith(`${href}/`)
   const hasBadge = badgeCount > 0
@@ -34,6 +41,7 @@ export function AppSidebarLink({ href, icon: Icon, label, badgeCount = 0 }: AppS
         active ? 'bg-zinc-950 text-white' : 'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950',
       )}
       href={href}
+      onClick={onNavigate}
     >
       <Icon className='h-4 w-4' />
       <span className='min-w-0 flex-1'>{label}</span>
@@ -71,11 +79,13 @@ const adminNavigationItem: AppSidebarLinkProps = {
 type AppSidebarNavProps = {
   unreadNotificationsCount?: number
   isAdmin?: boolean
+  onNavigate?: () => void
 }
 
 export function AppSidebarNav({
   unreadNotificationsCount = 0,
   isAdmin = false,
+  onNavigate,
 }: AppSidebarNavProps) {
   const items = isAdmin ? [...navigationItems, adminNavigationItem] : navigationItems
 
@@ -85,6 +95,7 @@ export function AppSidebarNav({
         <AppSidebarLink
           key={item.href}
           {...item}
+          onNavigate={onNavigate}
           badgeCount={item.href === '/notifications' ? unreadNotificationsCount : undefined}
         />
       ))}
