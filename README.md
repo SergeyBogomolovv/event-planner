@@ -1,27 +1,74 @@
 # Event Planner
 
-Веб-приложение для организации закрытых мероприятий.
+Event Planner — веб-приложение для организации закрытых мероприятий.
 
-Пользователь может зарегистрироваться, создать мероприятие, пригласить зарегистрированных пользователей, отслеживать статусы приглашений и управлять участниками. Приглашённые пользователи могут принять или отклонить участие, а администратор управляет пользователями и мероприятиями на уровне всей системы.
+В приложении можно создать мероприятие, пригласить зарегистрированных пользователей, принять или отклонить приглашение, управлять участниками, получать уведомления и администрировать пользователей/мероприятия.
 
-## Документация
+## Возможности
 
-- [Продуктовое описание](docs/PRODUCT.md)
-- [Бэкенд и база данных](docs/BACKEND.md)
-- [Фронтенд](docs/FRONTEND.md)
+- Регистрация и вход по email/password.
+- JWT auth через `httpOnly` cookies.
+- Refresh-сессии в Redis.
+- Создание и управление мероприятиями.
+- Приглашения участников и статусы ответов.
+- Уведомления внутри приложения.
+- Email-уведомления через BullMQ и SMTP.
+- Личный кабинет с ближайшими событиями и счетчиками.
+- Админ-панель для пользователей и мероприятий.
+
+## Стек
+
+Backend:
+
+- NestJS 11
+- TypeORM
+- PostgreSQL
+- Redis
+- BullMQ
+- Passport JWT
+- Nodemailer
+- Jest
+
+Frontend:
+
+- Next.js 16 App Router
+- React 19
+- Tailwind CSS
+- shadcn/ui
+- React Hook Form
+- Zod
+- date-fns
+- lucide-react
+
+Инфраструктура:
+
+- Docker
+- Docker Compose
+- GitHub Actions
+- Docker Hub
+- nginx на сервере вне Docker
+
+## Структура
+
+```text
+event-planner/
+  backend/                  # NestJS API
+  frontend/                 # Next.js app
+  docs/                     # продуктовая и техническая документация
+  vibe/                     # этапы реализации
+  docker-compose.local.yaml # локальная инфраструктура
+  docker-compose.prod.yaml  # production compose template
+```
 
 ## Локальный запуск
 
-`docker-compose.local.yaml` поднимает только инфраструктуру проекта:
-
-- PostgreSQL на `localhost:5432`;
-- Redis на `localhost:6379`.
-
-Backend и frontend запускаются вручную через npm-команды из своих папок.
+Локально Docker Compose поднимает только PostgreSQL и Redis. Backend и frontend запускаются npm-командами.
 
 ```bash
 docker compose -f docker-compose.local.yaml up -d
 ```
+
+Backend:
 
 ```bash
 cd backend
@@ -30,11 +77,13 @@ npm ci
 npm run start:dev
 ```
 
-Проверка backend:
+Проверка:
 
 ```bash
 curl http://localhost:3000/api/v1/health
 ```
+
+Frontend:
 
 ```bash
 cd frontend
@@ -43,195 +92,110 @@ npm ci
 npm run dev -- -p 3001
 ```
 
-Frontend будет доступен на `http://localhost:3001`.
-
-Для локального frontend-запуска API должен указывать на локальный backend:
+Для локального frontend-запуска `.env.local` должен указывать на backend:
 
 ```env
 NEXT_PUBLIC_API_BASE_URL=http://localhost:3000/api/v1
 SERVER_API_BASE_URL=http://localhost:3000/api/v1
 ```
 
-## Технологический стек
+Frontend будет доступен на `http://localhost:3001`.
 
-### Backend
+## Команды
 
-Основной выбор:
+Backend:
 
-- **NestJS** — backend-фреймворк для модульной архитектуры приложения.
-- **TypeORM** — ORM для работы с сущностями, связями и миграциями.
-- **PostgreSQL** — основная реляционная база данных.
-
-Используемые библиотеки:
-
-- **class-validator / class-transformer** — валидация и преобразование DTO.
-- **@nestjs/config** — конфигурация через переменные окружения.
-- **@nestjs/passport + passport-jwt** — стандартный NestJS-подход к аутентификации через Passport strategies и guards.
-- **@nestjs/jwt** — выпуск access и refresh токенов.
-- **bcrypt** — хэширование паролей.
-- **@nestjs/bullmq + bullmq** — очередь фоновых задач.
-- **Redis** — хранилище задач для BullMQ.
-- **nodemailer** — отправка email-уведомлений о приглашениях, изменениях и отменах мероприятий.
-
-### Авторизация
-
-Для авторизации используем стандартные решения NestJS:
-
-- `AuthModule`;
-- Passport strategies;
-- guards для защиты роутов;
-- decorators для получения текущего пользователя;
-- `@nestjs/jwt` для выпуска и проверки токенов.
-
-Базовый сценарий:
-
-- пользователь входит по email и паролю;
-- backend выдаёт access token на 15 минут и refresh token на 7 дней;
-- токены хранятся в `httpOnly` cookies;
-- frontend не хранит токены в `localStorage`;
-- закрытые API защищаются JWT guard;
-- обновление access token выполняется через refresh endpoint;
-- refresh token хранится и инвалидируется через Redis;
-- выход из системы очищает cookies и удаляет refresh-сессию из Redis.
-
-Такой подход удобен для Next.js-приложения: браузер сам отправляет cookies, а токены не доступны из клиентского JavaScript.
-
-### Database
-
-- **PostgreSQL** — основное хранилище.
-- Миграции ведём через TypeORM.
-- Основные сущности: пользователи, мероприятия, участники мероприятия, уведомления, email-сообщения.
-
-### Infrastructure
-
-- **Docker** — сборка production-образов backend и frontend.
-- **Docker Compose** — локально запускает PostgreSQL и Redis; в production запускает frontend, backend, PostgreSQL и Redis.
-- **Redis** — используется BullMQ для фоновой обработки email-уведомлений.
-- **GitHub Actions** — CI/CD пайплайн.
-- **Docker Hub** — registry для собранных контейнеров.
-
-### Frontend
-
-Основной выбор:
-
-- **Next.js** — frontend-фреймворк на React.
-- **shadcn/ui** — набор переиспользуемых UI-компонентов, которые копируются в проект и кастомизируются локально.
-- **Tailwind CSS** — utility-first CSS для стилизации интерфейса.
-
-Используемые библиотеки:
-
-- **React Hook Form** — работа с формами.
-- **Zod** — схемы валидации форм и клиентских данных.
-- **date-fns** — форматирование дат и времени.
-- **lucide-react** — иконки для интерфейса.
-
-### Testing
-
-Базовый набор:
-
-- **Jest** — unit-тесты backend-логики.
-- **Supertest** — зависимость под API/e2e-проверки backend.
-
-E2E-тесты браузерных сценариев пока не закладываем. На первом этапе достаточно unit/API-тестов и ручной проверки основных пользовательских потоков.
-
-## Архитектурный подход
-
-Проект сделан как два независимых приложения в одном репозитории:
-
-- `backend` — NestJS API;
-- `frontend` — Next.js web-приложение.
-
-Общей monorepo-утилиты не используем. У каждого приложения свой `package.json`, свои зависимости и свои команды запуска.
-
-Пакетный менеджер:
-
-- **npm**.
-
-Структура:
-
-```text
-event-planner/
-  backend/
-  deploy/
-  frontend/
-  .github/workflows/
-  docs/
-  vibe/
-  docker-compose.local.yaml
-  docker-compose.prod.yaml
-  README.md
+```bash
+cd backend
+npm run lint
+npm test -- --runInBand --watchman=false
+npm run build
+npm run migration:run
 ```
 
-Бэкенд остаётся единым приложением с логическим разделением на модули:
+Frontend:
 
-- auth;
-- users;
-- events;
-- participants;
-- notifications;
-- mail;
-- dashboard;
-- admin.
-
-Email-уведомления отправляются через очередь:
-
-- backend создаёт запись `email_messages`;
-- backend добавляет задачу в BullMQ;
-- BullMQ processor внутри backend-приложения обрабатывает задачу и отправляет письмо;
-- результат отправки сохраняется в `email_messages`.
-
-Worker не является отдельным сервисом и не собирается в отдельный Docker image. Он живёт внутри NestJS backend-приложения как фоновый обработчик очереди.
-
-Mail provider:
-
-- **Google SMTP** через env-настройки.
-
-Локальный Docker Compose запускает:
-
-- `postgres` — база данных;
-- `redis` — очередь фоновых задач.
-
-Backend и frontend в локальной разработке запускаются вручную через npm.
-
-Фронтенд строится вокруг закрытой пользовательской зоны:
-
-- личный кабинет;
-- мои мероприятия;
-- приглашения;
-- я участвую;
-- страница мероприятия;
-- управление участниками;
-- админ-панель.
-
-## CI/CD
-
-Для CI/CD используем GitHub Actions.
-
-Базовый пайплайн:
-
-- установить зависимости;
-- прогнать backend lint/test/build;
-- прогнать frontend lint/build;
-- собрать Docker image для `backend`;
-- собрать Docker image для `frontend`;
-- запушить контейнеры в Docker Hub.
-
-Docker Hub images:
-
-- `grekas/event-planner-backend`;
-- `grekas/event-planner-frontend`.
-
-Автоматический деплой в production пока не делаем. Production-запуск выполняется вручную: контейнеры забираются из Docker Hub и запускаются на выбранном сервере.
+```bash
+cd frontend
+npm run lint
+npm run build
+```
 
 ## Production
 
-Production-запуск описан в [deploy/README.md](deploy/README.md).
+Production-запуск рассчитан на сервер, где:
 
-Коротко:
+- Docker Compose запускает `postgres`, `redis`, `backend`, `frontend`;
+- nginx установлен на сервере вне Docker;
+- nginx проксирует `/api/v1/*` на backend `127.0.0.1:4000`;
+- остальные запросы nginx проксирует на frontend `127.0.0.1:3001`.
 
-- `docker-compose.prod.yaml` запускает `postgres`, `redis`, `backend`, `frontend`;
-- миграции запускаются отдельным compose-профилем `migrations`;
-- nginx стоит на сервере вне Docker и проксирует:
-  - `/api/v1/*` на backend `127.0.0.1:4000`;
-  - остальные запросы на frontend `127.0.0.1:3001`;
-- домен production: `planner.grekassoq.ru`.
+Production compose template лежит в [docker-compose.prod.yaml](docker-compose.prod.yaml).
+
+Пример ручного обновления на сервере:
+
+```bash
+cd /opt/event-planner
+docker compose pull
+COMPOSE_PROFILES=migrations docker compose run --rm backend-migrations
+docker compose up -d
+docker image prune -f
+```
+
+## CI/CD
+
+GitHub Actions workflow находится в [.github/workflows/ci.yml](.github/workflows/ci.yml).
+
+На pull request workflow выполняет:
+
+- backend lint/test/build;
+- frontend lint/build.
+
+На push в `main` workflow дополнительно:
+
+- собирает Docker images;
+- пушит images в Docker Hub;
+- подключается к серверу по SSH;
+- выполняет `docker compose pull`;
+- запускает миграции;
+- перезапускает контейнеры через `docker compose up -d`.
+
+Docker Hub images:
+
+- `grekas/event-planner-backend`
+- `grekas/event-planner-frontend`
+
+Для автодеплоя нужны GitHub Secrets:
+
+- `DOCKERHUB_TOKEN`
+- `DEPLOY_HOST`
+- `DEPLOY_USER`
+- `DEPLOY_SSH_KEY`
+- `DEPLOY_PORT`, если SSH работает не на `22`
+
+CI не перезаписывает compose-файл на сервере. Production-секреты можно хранить прямо в `/opt/event-planner/docker-compose.yaml`.
+
+## Назначить администратора
+
+Сначала пользователь должен зарегистрироваться в приложении. После этого на сервере можно обновить роль по email:
+
+```bash
+cd /opt/event-planner
+docker compose exec postgres \
+  psql -U event_planner -d event_planner \
+  -c "UPDATE users SET role = 'admin' WHERE email = 'user@example.com';"
+```
+
+Проверка:
+
+```bash
+docker compose exec postgres \
+  psql -U event_planner -d event_planner \
+  -c "SELECT email, role FROM users WHERE email = 'user@example.com';"
+```
+
+## Документация
+
+- [Продуктовое описание](docs/PRODUCT.md)
+- [Backend API и база данных](docs/BACKEND.md)
+- [Frontend](docs/FRONTEND.md)
