@@ -15,6 +15,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { apiRequest } from '@/lib/api'
+import { unreadNotificationsChangedEvent } from '@/lib/notification-events'
 import { cn } from '@/lib/utils'
 
 type AppSidebarLinkProps = {
@@ -99,7 +100,8 @@ export function AppSidebarNav({
     }
 
     let active = true
-    void apiRequest<{ count: number }>('/notifications/unread-count')
+    const refreshUnreadCount = () => {
+      void apiRequest<{ count: number }>('/notifications/unread-count')
       .then((response) => {
         if (active) {
           setClientUnreadCount(response.count)
@@ -110,9 +112,14 @@ export function AppSidebarNav({
           setClientUnreadCount(0)
         }
       })
+    }
+
+    refreshUnreadCount()
+    window.addEventListener(unreadNotificationsChangedEvent, refreshUnreadCount)
 
     return () => {
       active = false
+      window.removeEventListener(unreadNotificationsChangedEvent, refreshUnreadCount)
     }
   }, [unreadNotificationsCount])
 

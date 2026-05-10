@@ -59,7 +59,7 @@ export class EventsService {
 
   async findParticipating(user: User): Promise<Event[]> {
     const organizedEvents = await this.events.find({
-      where: { organizerId: user.id },
+      where: { organizerId: user.id, status: EventStatus.Active },
       order: { startsAt: 'ASC', createdAt: 'DESC' },
     });
     const participants = await this.participants
@@ -69,6 +69,9 @@ export class EventsService {
       .where('participant.user_id = :userId', { userId: user.id })
       .andWhere('participant.status = :status', {
         status: EventParticipantStatus.Accepted,
+      })
+      .andWhere('event.status = :eventStatus', {
+        eventStatus: EventStatus.Active,
       })
       .orderBy('event.starts_at', 'ASC')
       .addOrderBy('event.created_at', 'DESC')

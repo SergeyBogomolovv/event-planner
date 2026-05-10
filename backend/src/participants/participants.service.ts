@@ -39,6 +39,9 @@ export class ParticipantsService {
       .andWhere('participant.status = :status', {
         status: EventParticipantStatus.Invited,
       })
+      .andWhere('event.status = :eventStatus', {
+        eventStatus: EventStatus.Active,
+      })
       .orderBy('participant.invitedAt', 'DESC')
       .getMany();
   }

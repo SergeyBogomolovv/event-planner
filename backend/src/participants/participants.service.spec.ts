@@ -132,7 +132,8 @@ describe('ParticipantsService', () => {
                 .filter(
                   (participant) =>
                     participant.userId === invitedUser.id &&
-                    participant.status === EventParticipantStatus.Invited,
+                    participant.status === EventParticipantStatus.Invited &&
+                    participant.event.status === EventStatus.Active,
                 )
                 .sort(
                   (left, right) =>
@@ -336,6 +337,27 @@ describe('ParticipantsService', () => {
 
     expect(invitations).toHaveLength(1);
     expect(invitations[0].id).toBe('active-invitation');
+  });
+
+  it('hides invitations for cancelled events', async () => {
+    const cancelledEvent = createEvent({
+      id: 'cancelled-event',
+      status: EventStatus.Cancelled,
+    });
+    const { service } = createService({
+      events: [cancelledEvent],
+      participants: [
+        createParticipant({
+          id: 'cancelled-invitation',
+          eventId: cancelledEvent.id,
+          event: cancelledEvent,
+        }),
+      ],
+    });
+
+    const invitations = await service.findInvitations(invitedUser);
+
+    expect(invitations).toHaveLength(0);
   });
 
   it('loads event organizer for invitation response mapping', async () => {

@@ -6,6 +6,10 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
 import { isUniqueViolation } from '../common/db-errors';
+import {
+  EventParticipant,
+  EventParticipantStatus,
+} from '../participants/event-participant.entity';
 import { UpdateProfileDto } from './dto';
 import { User, UserRole, UserStatus } from './user.entity';
 
@@ -95,11 +99,16 @@ export class UsersService {
     }
   }
 
-  search(params: { query: string; limit?: number; excludeUserId: string }) {
+  search(params: {
+    query: string;
+    limit?: number;
+    excludeUserId: string;
+    eventId?: string;
+  }) {
     const normalizedQuery = params.query.trim().toLowerCase();
     const limit = params.limit ?? 10;
 
-    return this.users
+    const queryBuilder = this.users
       .createQueryBuilder('user')
       .where('user.status = :status', { status: UserStatus.Active })
       .andWhere('user.id != :excludeUserId', {
@@ -117,8 +126,30 @@ export class UsersService {
         }),
       )
       .orderBy('user.name', 'ASC')
-      .limit(limit)
-      .getMany();
+      .limit(limit);
+
+    if (params.eventId) {
+      queryBuilder
+        .leftJoin(
+          EventParticipant,
+          'participant',
+          [
+            'participant.user_id = user.id',
+            'participant.event_id = :eventId',
+            'participant.status IN (:...excludedParticipantStatuses)',
+          ].join(' AND '),
+          {
+            eventId: params.eventId,
+            excludedParticipantStatuses: [
+              EventParticipantStatus.Invited,
+              EventParticipantStatus.Accepted,
+            ],
+          },
+        )
+        .andWhere('participant.id IS NULL');
+    }
+
+    return queryBuilder.getMany();
   }
 
   private normalizeEmail(email: string): string {

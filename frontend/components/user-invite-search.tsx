@@ -28,14 +28,18 @@ export function UserInviteSearch({ eventId }: UserInviteSearchProps) {
   const [users, setUsers] = useState<CurrentUser[]>([])
   const [pendingUserId, setPendingUserId] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const [hasSearched, setHasSearched] = useState(false)
 
   async function search(values: UserSearchFormValues) {
     setError('')
 
     try {
       const query = encodeURIComponent(values.query)
-      setUsers(await apiRequest<CurrentUser[]>(`/users/search?q=${query}`))
+      setUsers(await apiRequest<CurrentUser[]>(`/users/search?q=${query}&eventId=${eventId}`))
+      setHasSearched(true)
     } catch {
+      setUsers([])
+      setHasSearched(false)
       setError('Не удалось найти пользователей.')
     }
   }
@@ -48,6 +52,7 @@ export function UserInviteSearch({ eventId }: UserInviteSearchProps) {
         method: 'POST',
         body: JSON.stringify({ userId }),
       })
+      setUsers((currentUsers) => currentUsers.filter((user) => user.id !== userId))
       router.refresh()
     } catch {
       setError('Не удалось отправить приглашение.')
@@ -105,6 +110,10 @@ export function UserInviteSearch({ eventId }: UserInviteSearchProps) {
                 </Button>
               </div>
             ))}
+          </div>
+        ) : hasSearched ? (
+          <div className='rounded-lg border border-dashed p-5 text-center text-sm text-muted-foreground'>
+            Пользователи не найдены.
           </div>
         ) : null}
 

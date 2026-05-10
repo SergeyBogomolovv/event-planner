@@ -23,11 +23,13 @@ type EventsQueryBuilderMock = {
 };
 
 type ParticipantsQueryBuilderMock = {
+  innerJoin: jest.MockedFunction<() => ParticipantsQueryBuilderMock>;
   innerJoinAndSelect: jest.MockedFunction<() => ParticipantsQueryBuilderMock>;
   where: jest.MockedFunction<() => ParticipantsQueryBuilderMock>;
   andWhere: jest.MockedFunction<() => ParticipantsQueryBuilderMock>;
   orderBy: jest.MockedFunction<() => ParticipantsQueryBuilderMock>;
   take: jest.MockedFunction<() => ParticipantsQueryBuilderMock>;
+  getCount: jest.MockedFunction<() => Promise<number>>;
   getMany: jest.MockedFunction<() => Promise<EventParticipant[]>>;
 };
 
@@ -49,11 +51,13 @@ describe('DashboardService', () => {
       getMany: jest.fn(() => Promise.resolve([participatingEvent])),
     };
     const participantsQuery: ParticipantsQueryBuilderMock = {
+      innerJoin: jest.fn(() => participantsQuery),
       innerJoinAndSelect: jest.fn(() => participantsQuery),
       where: jest.fn(() => participantsQuery),
       andWhere: jest.fn(() => participantsQuery),
       orderBy: jest.fn(() => participantsQuery),
       take: jest.fn(() => participantsQuery),
+      getCount: jest.fn().mockResolvedValueOnce(3).mockResolvedValueOnce(1),
       getMany: jest.fn(() => Promise.resolve([invitation])),
     };
 
@@ -63,7 +67,6 @@ describe('DashboardService', () => {
       createQueryBuilder: jest.fn(() => eventsQuery),
     };
     const participantsRepo = {
-      count: jest.fn().mockResolvedValueOnce(3).mockResolvedValueOnce(1),
       createQueryBuilder: jest.fn(() => participantsQuery),
     };
     const notificationsService = {
@@ -78,14 +81,14 @@ describe('DashboardService', () => {
         notificationsService as unknown as NotificationsService,
       ),
       eventsRepo,
-      participantsRepo,
+      participantsQuery,
       notificationsService,
     };
   }
 
   it('builds dashboard data for current user', async () => {
     const user = createUser();
-    const { service, eventsRepo, participantsRepo, notificationsService } =
+    const { service, eventsRepo, participantsQuery, notificationsService } =
       createService();
 
     const dashboard = await service.findMine(user);
@@ -99,18 +102,14 @@ describe('DashboardService', () => {
     expect(eventsRepo.count).toHaveBeenCalledWith({
       where: { organizerId: user.id },
     });
-    expect(participantsRepo.count).toHaveBeenCalledWith({
-      where: {
-        userId: user.id,
-        status: EventParticipantStatus.Accepted,
-      },
-    });
-    expect(participantsRepo.count).toHaveBeenCalledWith({
-      where: {
-        userId: user.id,
-        status: EventParticipantStatus.Invited,
-      },
-    });
+    expect(participantsQuery.innerJoin).toHaveBeenCalledWith(
+      'participant.event',
+      'event',
+    );
+    expect(participantsQuery.andWhere).toHaveBeenCalledWith(
+      'event.status = :eventStatus',
+      { eventStatus: EventStatus.Active },
+    );
     expect(notificationsService.findUnreadLatest).toHaveBeenCalledWith(user, 3);
   });
 });

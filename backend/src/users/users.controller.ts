@@ -29,6 +29,7 @@ export class UsersController {
       query: dto.q,
       limit: dto.limit,
       excludeUserId: user.id,
+      eventId: dto.eventId,
     });
     return users.map((foundUser) => new UserResponseDto(foundUser));
   }

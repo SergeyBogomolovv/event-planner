@@ -65,10 +65,14 @@ describe('EventsService', () => {
         }
         return Promise.resolve(saved);
       }),
-      find: jest.fn(() =>
+      find: jest.fn(({ where }: { where: Partial<Event> }) =>
         Promise.resolve(
           store
-            .filter((event) => event.organizerId === organizerUser.id)
+            .filter(
+              (event) =>
+                event.organizerId === where.organizerId &&
+                (where.status === undefined || event.status === where.status),
+            )
             .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime()),
         ),
       ),
@@ -97,7 +101,8 @@ describe('EventsService', () => {
               participantStore.filter(
                 (participant) =>
                   participant.userId === organizerUser.id &&
-                  participant.status === EventParticipantStatus.Accepted,
+                  participant.status === EventParticipantStatus.Accepted &&
+                  participant.event.status === EventStatus.Active,
               ),
             ),
           ),
@@ -167,11 +172,15 @@ describe('EventsService', () => {
   });
 
   it('includes organized events in participating list', async () => {
-    const organized = createEvent({ id: 'organized' });
+    const organized = createEvent({
+      id: 'organized',
+      status: EventStatus.Active,
+    });
     const acceptedEvent = createEvent({
       id: 'accepted',
       organizerId: otherUser.id,
       organizer: otherUser,
+      status: EventStatus.Active,
       startsAt: new Date('2026-06-02T10:00:00.000Z'),
     });
     const { service, participantStore } = createService([
@@ -191,6 +200,46 @@ describe('EventsService', () => {
     const events = await service.findParticipating(organizerUser);
 
     expect(events.map((event) => event.id)).toEqual(['organized', 'accepted']);
+  });
+
+  it('hides cancelled events from participating list', async () => {
+    const cancelledOrganized = createEvent({
+      id: 'cancelled-organized',
+      status: EventStatus.Cancelled,
+    });
+    const cancelledAccepted = createEvent({
+      id: 'cancelled-accepted',
+      organizerId: otherUser.id,
+      organizer: otherUser,
+      status: EventStatus.Cancelled,
+    });
+    const { service, participantStore } = createService([
+      cancelledOrganized,
+      cancelledAccepted,
+    ]);
+    participantStore.push(
+      createParticipant({
+        eventId: cancelledAccepted.id,
+        event: cancelledAccepted,
+        userId: organizerUser.id,
+        user: organizerUser,
+        status: EventParticipantStatus.Accepted,
+      }),
+    );
+
+    const events = await service.findParticipating(organizerUser);
+
+    expect(events).toHaveLength(0);
+  });
+
+  it('hides draft organized events from participating list', async () => {
+    const { service } = createService([
+      createEvent({ id: 'draft-organized', status: EventStatus.Draft }),
+    ]);
+
+    const events = await service.findParticipating(organizerUser);
+
+    expect(events).toHaveLength(0);
   });
 
   it('prevents non-organizer from editing', async () => {

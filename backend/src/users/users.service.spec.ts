@@ -7,12 +7,24 @@ const testDate = new Date('2026-01-01T00:00:00Z');
 type UserQueryBuilderMock = {
   addSelect: jest.Mock<UserQueryBuilderMock, [string]>;
   where: jest.Mock<UserQueryBuilderMock, [string, Record<string, string>]>;
+  andWhere: jest.Mock<
+    UserQueryBuilderMock,
+    [unknown, Record<string, unknown>?]
+  >;
+  leftJoin: jest.Mock<
+    UserQueryBuilderMock,
+    [unknown, string, string, Record<string, unknown>]
+  >;
+  orderBy: jest.Mock<UserQueryBuilderMock, [string, string]>;
+  limit: jest.Mock<UserQueryBuilderMock, [number]>;
   getOne: jest.Mock<Promise<User | null>, []>;
+  getMany: jest.Mock<Promise<User[]>, []>;
 };
 
 describe('UsersService', () => {
   function createService(existingUsers: User[] = []) {
     const store = [...existingUsers];
+    let lastQuery: UserQueryBuilderMock | null = null;
     const repo = {
       findOne: jest.fn(({ where }: { where: Partial<User> }) =>
         Promise.resolve(
@@ -36,8 +48,40 @@ describe('UsersService', () => {
               return query;
             },
           ),
+          andWhere: jest.fn(
+            (condition: unknown, parameters?: Record<string, unknown>) => {
+              void condition;
+              void parameters;
+              return query;
+            },
+          ),
+          leftJoin: jest.fn(
+            (
+              entity: unknown,
+              alias: string,
+              condition: string,
+              parameters: Record<string, unknown>,
+            ) => {
+              void entity;
+              void alias;
+              void condition;
+              void parameters;
+              return query;
+            },
+          ),
+          orderBy: jest.fn((sort: string, order: string) => {
+            void sort;
+            void order;
+            return query;
+          }),
+          limit: jest.fn((limit: number) => {
+            void limit;
+            return query;
+          }),
           getOne: jest.fn(() => Promise.resolve(null)),
+          getMany: jest.fn(() => Promise.resolve(store)),
         };
+        lastQuery = query;
         return query;
       }),
       create: jest.fn((data: Partial<User>): User => data as User),
@@ -60,7 +104,12 @@ describe('UsersService', () => {
       }),
     };
 
-    return { service: new UsersService(repo as never), repo, store };
+    return {
+      service: new UsersService(repo as never),
+      repo,
+      store,
+      getLastQuery: () => lastQuery,
+    };
   }
 
   it('creates a user with normalized email', async () => {
@@ -105,6 +154,35 @@ describe('UsersService', () => {
       name: 'Ada Lovelace',
       email: 'ada.lovelace@example.com',
     });
+  });
+
+  it('excludes already invited or accepted users from event search', async () => {
+    const { service, getLastQuery } = createService([createUser()]);
+
+    await service.search({
+      query: 'ada',
+      excludeUserId: 'current-user',
+      eventId: '550e8400-e29b-41d4-a716-446655440000',
+    });
+
+    const query = getLastQuery();
+    if (!query) {
+      throw new Error('Expected user query builder to be created');
+    }
+    expect(query.leftJoin).toHaveBeenCalledWith(
+      expect.any(Function),
+      'participant',
+      [
+        'participant.user_id = user.id',
+        'participant.event_id = :eventId',
+        'participant.status IN (:...excludedParticipantStatuses)',
+      ].join(' AND '),
+      {
+        eventId: '550e8400-e29b-41d4-a716-446655440000',
+        excludedParticipantStatuses: ['invited', 'accepted'],
+      },
+    );
+    expect(query.andWhere).toHaveBeenCalledWith('participant.id IS NULL');
   });
 });
 

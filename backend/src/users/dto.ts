@@ -6,6 +6,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
   Min,
   Max,
@@ -63,4 +64,8 @@ export class SearchUsersDto {
   @Min(1)
   @Max(20)
   limit?: number;
+
+  @IsOptional()
+  @IsUUID()
+  eventId?: string;
 }

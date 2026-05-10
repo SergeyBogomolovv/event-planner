@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Event } from '../events/event.entity';
+import { Event, EventStatus } from '../events/event.entity';
 import { Notification } from '../notifications/notification.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
@@ -79,21 +79,31 @@ export class DashboardService {
   }
 
   private countAcceptedParticipants(user: User): Promise<number> {
-    return this.participants.count({
-      where: {
-        userId: user.id,
+    return this.participants
+      .createQueryBuilder('participant')
+      .innerJoin('participant.event', 'event')
+      .where('participant.user_id = :userId', { userId: user.id })
+      .andWhere('participant.status = :status', {
         status: EventParticipantStatus.Accepted,
-      },
-    });
+      })
+      .andWhere('event.status = :eventStatus', {
+        eventStatus: EventStatus.Active,
+      })
+      .getCount();
   }
 
   private countPendingInvitations(user: User): Promise<number> {
-    return this.participants.count({
-      where: {
-        userId: user.id,
+    return this.participants
+      .createQueryBuilder('participant')
+      .innerJoin('participant.event', 'event')
+      .where('participant.user_id = :userId', { userId: user.id })
+      .andWhere('participant.status = :status', {
         status: EventParticipantStatus.Invited,
-      },
-    });
+      })
+      .andWhere('event.status = :eventStatus', {
+        eventStatus: EventStatus.Active,
+      })
+      .getCount();
   }
 
   private findUpcomingEvents(user: User): Promise<Event[]> {
@@ -107,6 +117,9 @@ export class DashboardService {
         { userId: user.id, status: EventParticipantStatus.Accepted },
       )
       .where('event.startsAt >= :now', { now: new Date() })
+      .andWhere('event.status = :eventStatus', {
+        eventStatus: EventStatus.Active,
+      })
       .andWhere(
         '(event.organizer_id = :userId OR participant.id IS NOT NULL)',
         {
@@ -140,6 +153,9 @@ export class DashboardService {
       .where('event.organizer_id = :userId OR participant.id IS NOT NULL', {
         userId: user.id,
       })
+      .andWhere('event.status = :eventStatus', {
+        eventStatus: EventStatus.Active,
+      })
       .orderBy('event.startsAt', 'ASC')
       .addOrderBy('event.createdAt', 'DESC')
       .take(this.listLimit)
@@ -156,6 +172,9 @@ export class DashboardService {
       .where('participant.user_id = :userId', { userId: user.id })
       .andWhere('participant.status = :status', {
         status: EventParticipantStatus.Invited,
+      })
+      .andWhere('event.status = :eventStatus', {
+        eventStatus: EventStatus.Active,
       })
       .orderBy('participant.invitedAt', 'DESC')
       .take(this.listLimit)

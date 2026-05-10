@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CheckCheck } from 'lucide-react'
 import { apiRequest, type NotificationItem } from '@/lib/api'
+import { unreadNotificationsChangedEvent } from '@/lib/notification-events'
 import { Button } from '@/components/ui/button'
 
 type NotificationReadButtonProps = {
@@ -20,6 +21,7 @@ export function NotificationReadButton({ notification }: NotificationReadButtonP
       await apiRequest<NotificationItem>(`/notifications/${notification.id}/read`, {
         method: 'PATCH',
       })
+      window.dispatchEvent(new Event(unreadNotificationsChangedEvent))
       router.refresh()
     } finally {
       setIsPending(false)
