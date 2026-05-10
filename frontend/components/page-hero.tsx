@@ -49,7 +49,7 @@ export function PageHero({
             <p className='mt-3 max-w-2xl leading-7 text-zinc-300'>{description}</p>
           ) : null}
         </div>
-        {action ? <div className='shrink-0'>{action}</div> : null}
+        {action ? <div className='w-full min-w-0 lg:w-auto lg:shrink-0'>{action}</div> : null}
       </div>
       {children ? <div className='relative mt-6'>{children}</div> : null}
     </section>

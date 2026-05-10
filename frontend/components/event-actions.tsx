@@ -57,16 +57,18 @@ export function EventActions({ event, compact = false }: EventActionsProps) {
   const size = compact ? 'sm' : 'lg'
   const outlineClass =
     'border-white/25 bg-white text-zinc-950 hover:bg-zinc-100 hover:text-zinc-950'
+  const actionItemClass = compact ? '' : 'w-full justify-center sm:w-auto'
   const linkClass = cn(
     buttonVariants({ variant: 'outline', size }),
     'gap-2',
     !compact && outlineClass,
+    actionItemClass,
   )
-  const outlineButtonClass = cn('gap-2', !compact && outlineClass)
+  const outlineButtonClass = cn('gap-2', !compact && outlineClass, actionItemClass)
 
   return (
     <div className='space-y-2'>
-      <div className='flex flex-wrap gap-2'>
+      <div className='flex min-w-0 flex-wrap gap-2'>
         {event.availableActions.includes('edit') ? (
           <Link href={`/events/${event.id}/edit`} className={linkClass}>
             <Pencil className='h-4 w-4' />
@@ -113,7 +115,7 @@ export function EventActions({ event, compact = false }: EventActionsProps) {
           <Button
             variant='destructive'
             size={size}
-            className='gap-2'
+            className={cn('gap-2', actionItemClass)}
             disabled={pendingAction === 'delete'}
             onClick={() => runAction('delete')}
           >
