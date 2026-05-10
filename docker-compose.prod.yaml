@@ -1,0 +1,91 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: event_planner
+      POSTGRES_USER: event_planner
+      POSTGRES_PASSWORD: change-me-postgres-password
+    volumes:
+      - event_planner_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U event_planner -d event_planner"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - event_planner_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: grekas/event-planner-backend:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      FRONTEND_ORIGIN: https://planner.grekassoq.ru
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: event_planner
+      POSTGRES_PASSWORD: change-me-postgres-password
+      POSTGRES_DB: event_planner
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      TYPEORM_SYNC: false
+      JWT_ACCESS_SECRET: change-me-access-secret
+      JWT_REFRESH_SECRET: change-me-refresh-secret
+      COOKIE_SECURE: true
+      MAIL_HOST: smtp.gmail.com
+      MAIL_PORT: 587
+      MAIL_USER: change-me@example.com
+      MAIL_PASSWORD: change-me-mail-password
+      MAIL_FROM: Event Planner <change-me@example.com>
+    ports:
+      - "127.0.0.1:4000:3000"
+
+  backend-migrations:
+    image: grekas/event-planner-backend:latest
+    profiles:
+      - migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["npm", "run", "migration:run:prod"]
+    environment:
+      NODE_ENV: production
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: event_planner
+      POSTGRES_PASSWORD: change-me-postgres-password
+      POSTGRES_DB: event_planner
+
+  frontend:
+    image: grekas/event-planner-frontend:latest
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      SERVER_API_BASE_URL: http://backend:3000/api/v1
+    ports:
+      - "127.0.0.1:3001:3000"
+
+volumes:
+  event_planner_postgres:
+  event_planner_redis:
