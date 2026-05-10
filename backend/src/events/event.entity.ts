@@ -29,7 +29,7 @@ export class Event {
   id: string;
 
   @Index()
-  @Column({ name: 'organizer_id' })
+  @Column({ name: 'organizer_id', type: 'uuid' })
   organizerId: string;
 
   @ManyToOne(() => User, { eager: true, nullable: false })

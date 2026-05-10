@@ -26,7 +26,7 @@ export class EventParticipant {
   id: string;
 
   @Index()
-  @Column({ name: 'event_id' })
+  @Column({ name: 'event_id', type: 'uuid' })
   eventId: string;
 
   @ManyToOne(() => Event, {
@@ -38,7 +38,7 @@ export class EventParticipant {
   event: Event;
 
   @Index()
-  @Column({ name: 'user_id' })
+  @Column({ name: 'user_id', type: 'uuid' })
   userId: string;
 
   @ManyToOne(() => User, { eager: true, nullable: false })
@@ -49,7 +49,7 @@ export class EventParticipant {
   @Column({ enum: EventParticipantStatus, type: 'enum' })
   status: EventParticipantStatus;
 
-  @Column({ name: 'invited_by' })
+  @Column({ name: 'invited_by', type: 'uuid' })
   invitedById: string;
 
   @ManyToOne(() => User, { eager: true, nullable: false })

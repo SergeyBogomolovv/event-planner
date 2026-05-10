@@ -28,7 +28,7 @@ export class EmailMessage {
   id: string;
 
   @Index()
-  @Column({ name: 'user_id', nullable: true })
+  @Column({ name: 'user_id', nullable: true, type: 'uuid' })
   userId: string | null;
 
   @ManyToOne(() => User, { eager: true, nullable: true })
@@ -56,7 +56,7 @@ export class EmailMessage {
   status: EmailMessageStatus;
 
   @Index()
-  @Column({ name: 'related_event_id', nullable: true })
+  @Column({ name: 'related_event_id', nullable: true, type: 'uuid' })
   relatedEventId: string | null;
 
   @ManyToOne(() => Event, {

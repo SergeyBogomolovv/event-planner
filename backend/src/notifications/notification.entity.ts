@@ -24,7 +24,7 @@ export class Notification {
   id: string;
 
   @Index()
-  @Column({ name: 'user_id' })
+  @Column({ name: 'user_id', type: 'uuid' })
   userId: string;
 
   @ManyToOne(() => User, { eager: true, nullable: false })
@@ -41,7 +41,7 @@ export class Notification {
   message: string;
 
   @Index()
-  @Column({ name: 'related_event_id', nullable: true })
+  @Column({ name: 'related_event_id', nullable: true, type: 'uuid' })
   relatedEventId: string | null;
 
   @ManyToOne(() => Event, {

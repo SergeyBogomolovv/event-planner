@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { API_BASE_URL } from './api-config'
+import { SERVER_API_BASE_URL } from './api-config'
 import type {
   AdminEventItem,
   AdminStats,
@@ -32,7 +32,7 @@ export async function serverApiRequest<T>(
   init: RequestInit = {},
   options: ServerApiOptions = {},
 ): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(`${SERVER_API_BASE_URL}${path}`, {
     ...init,
     headers: {
       ...init.headers,

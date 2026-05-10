@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { join } from 'node:path';
 import { DataSource } from 'typeorm';
 
 export default new DataSource({
@@ -8,7 +9,7 @@ export default new DataSource({
   username: process.env.POSTGRES_USER ?? 'event_planner',
   password: process.env.POSTGRES_PASSWORD ?? 'event_planner',
   database: process.env.POSTGRES_DB ?? 'event_planner',
-  entities: ['src/**/*.entity.ts'],
-  migrations: ['src/database/migrations/*.ts'],
+  entities: [join(__dirname, '..', '**', '*.entity{.ts,.js}')],
+  migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
   synchronize: false,
 });

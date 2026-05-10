@@ -1,4 +1,4 @@
-import { API_BASE_URL } from './api-config'
+import { PUBLIC_API_BASE_URL } from './api-config'
 
 export type CurrentUser = {
   id: string
@@ -131,7 +131,7 @@ export class ApiRequestError extends Error {
 }
 
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(`${PUBLIC_API_BASE_URL}${path}`, {
     ...init,
     credentials: 'include',
     headers: {
