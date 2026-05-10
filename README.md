@@ -54,10 +54,10 @@ Frontend:
 event-planner/
   backend/                  # NestJS API
   frontend/                 # Next.js app
+  deploy/                   # production docker compose и env template
   docs/                     # продуктовая и техническая документация
   vibe/                     # этапы реализации
   docker-compose.local.yaml # локальная инфраструктура
-  docker-compose.prod.yaml  # production compose template
 ```
 
 ## Локальный запуск
@@ -129,8 +129,12 @@ Production-запуск рассчитан на сервер, где:
 - nginx установлен на сервере вне Docker;
 - nginx проксирует `/api/v1/*` на backend `127.0.0.1:4000`;
 - остальные запросы nginx проксирует на frontend `127.0.0.1:3001`.
+- на сервере установлен `rsync`, чтобы CI мог синхронизировать deploy-директорию.
 
-Production compose template лежит в [docker-compose.prod.yaml](docker-compose.prod.yaml).
+Production compose лежит в [deploy/docker-compose.yaml](deploy/docker-compose.yaml).
+Шаблон переменных окружения лежит в [deploy/.env.example](deploy/.env.example).
+
+На сервере `/opt/event-planner` является deploy-директорией. CI синхронизирует туда содержимое `deploy/`, включая сгенерированный `.env`, и запускает `docker compose` уже из этой директории. Секреты не хранятся в git: `.env` создается в GitHub Actions из GitHub Secrets перед синхронизацией.
 
 Пример ручного обновления на сервере:
 
@@ -156,6 +160,8 @@ GitHub Actions workflow находится в [.github/workflows/ci.yml](.github
 - собирает Docker images;
 - пушит images в Docker Hub;
 - подключается к серверу по SSH;
+- генерирует `deploy/.env` из GitHub Secrets;
+- синхронизирует `deploy/` в `/opt/event-planner`;
 - выполняет `docker compose pull`;
 - запускает миграции;
 - перезапускает контейнеры через `docker compose up -d`.
@@ -172,8 +178,23 @@ Docker Hub images:
 - `DEPLOY_USER`
 - `DEPLOY_SSH_KEY`
 - `DEPLOY_PORT`, если SSH работает не на `22`
+- `POSTGRES_PASSWORD`
+- `JWT_ACCESS_SECRET`
+- `JWT_REFRESH_SECRET`
+- `MAIL_USER`
+- `MAIL_PASSWORD`
+- `MAIL_FROM`
 
-CI не перезаписывает compose-файл на сервере. Production-секреты можно хранить прямо в `/opt/event-planner/docker-compose.yaml`.
+Не секретные production-настройки задаются в обычном `env` workflow:
+
+- `DEPLOY_PATH`, по умолчанию `/opt/event-planner`
+- `FRONTEND_ORIGIN`, например `https://planner.grekassoq.ru`
+- `POSTGRES_DB`, по умолчанию `event_planner`
+- `POSTGRES_USER`, по умолчанию `event_planner`
+- `MAIL_HOST`, по умолчанию `smtp.gmail.com`
+- `MAIL_PORT`, по умолчанию `587`
+
+Для первого ручного запуска без CI можно создать `/opt/event-planner/.env` по примеру [deploy/.env.example](deploy/.env.example), затем выполнить команды из раздела Production.
 
 ## Назначить администратора
 

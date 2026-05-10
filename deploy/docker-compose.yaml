@@ -3,13 +3,17 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: event_planner
-      POSTGRES_USER: event_planner
-      POSTGRES_PASSWORD: change-me-postgres-password
+      POSTGRES_DB: ${POSTGRES_DB:-event_planner}
+      POSTGRES_USER: ${POSTGRES_USER:-event_planner}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
       - event_planner_postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U event_planner -d event_planner"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-event_planner} -d ${POSTGRES_DB:-event_planner}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -27,7 +31,7 @@ services:
       retries: 5
 
   backend:
-    image: grekas/event-planner-backend:latest
+    image: ${BACKEND_IMAGE:?BACKEND_IMAGE is required}
     restart: unless-stopped
     depends_on:
       postgres:
@@ -37,28 +41,28 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      FRONTEND_ORIGIN: https://planner.grekassoq.ru
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?FRONTEND_ORIGIN is required}
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
-      POSTGRES_USER: event_planner
-      POSTGRES_PASSWORD: change-me-postgres-password
-      POSTGRES_DB: event_planner
+      POSTGRES_USER: ${POSTGRES_USER:-event_planner}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-event_planner}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       TYPEORM_SYNC: false
-      JWT_ACCESS_SECRET: change-me-access-secret
-      JWT_REFRESH_SECRET: change-me-refresh-secret
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
       COOKIE_SECURE: true
-      MAIL_HOST: smtp.gmail.com
-      MAIL_PORT: 587
-      MAIL_USER: change-me@example.com
-      MAIL_PASSWORD: change-me-mail-password
-      MAIL_FROM: Event Planner <change-me@example.com>
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USER: ${MAIL_USER:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
     ports:
       - "127.0.0.1:4000:3000"
 
   backend-migrations:
-    image: grekas/event-planner-backend:latest
+    image: ${BACKEND_IMAGE:?BACKEND_IMAGE is required}
     profiles:
       - migrations
     depends_on:
@@ -69,12 +73,12 @@ services:
       NODE_ENV: production
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
-      POSTGRES_USER: event_planner
-      POSTGRES_PASSWORD: change-me-postgres-password
-      POSTGRES_DB: event_planner
+      POSTGRES_USER: ${POSTGRES_USER:-event_planner}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-event_planner}
 
   frontend:
-    image: grekas/event-planner-frontend:latest
+    image: ${FRONTEND_IMAGE:?FRONTEND_IMAGE is required}
     restart: unless-stopped
     depends_on:
       - backend
