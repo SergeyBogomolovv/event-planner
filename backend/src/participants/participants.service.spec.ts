@@ -37,6 +37,14 @@ type ParticipantsQueryBuilderMock = {
   getMany: jest.MockedFunction<() => Promise<EventParticipant[]>>;
 };
 
+type EventQueryBuilderMock = {
+  setLock: jest.MockedFunction<() => EventQueryBuilderMock>;
+  where: jest.MockedFunction<
+    (_condition: string, params: { eventId: string }) => EventQueryBuilderMock
+  >;
+  getOne: jest.MockedFunction<() => Promise<Event | null>>;
+};
+
 describe('ParticipantsService', () => {
   function createService(params: {
     events?: Event[];
@@ -145,6 +153,22 @@ describe('ParticipantsService', () => {
           eventsStore.find((event) => event.id === where.id) ?? null,
         ),
       ),
+      createQueryBuilder: jest.fn(() => {
+        let lockedEventId = 'event-1';
+        const query: EventQueryBuilderMock = {
+          setLock: jest.fn(() => query),
+          where: jest.fn((_condition: string, params: { eventId: string }) => {
+            lockedEventId = params.eventId;
+            return query;
+          }),
+          getOne: jest.fn(() =>
+            Promise.resolve(
+              eventsStore.find((event) => event.id === lockedEventId) ?? null,
+            ),
+          ),
+        };
+        return query;
+      }),
     };
 
     const usersRepo = {

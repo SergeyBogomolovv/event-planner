@@ -131,10 +131,7 @@ export class ParticipantsService {
     const result = await this.dataSource.transaction(async (manager) => {
       const events = manager.getRepository(Event);
       const participants = manager.getRepository(EventParticipant);
-      const event = await events.findOne({
-        where: { id: eventId },
-        lock: { mode: 'pessimistic_write' },
-      });
+      const event = await this.lockEvent(events, eventId);
       if (!event) {
         throw new NotFoundException('Event not found');
       }
@@ -146,7 +143,6 @@ export class ParticipantsService {
         throw new NotFoundException('Participant not found');
       }
 
-      participant.event = event;
       this.assertActive(event);
 
       if (participant.status === EventParticipantStatus.Accepted) {
@@ -228,6 +224,14 @@ export class ParticipantsService {
       throw new NotFoundException('Event not found');
     }
     return event;
+  }
+
+  private lockEvent(eventsRepository: Repository<Event>, eventId: string) {
+    return eventsRepository
+      .createQueryBuilder('event')
+      .setLock('pessimistic_write')
+      .where('event.id = :eventId', { eventId })
+      .getOne();
   }
 
   private async requireParticipant(eventId: string, userId: string) {
