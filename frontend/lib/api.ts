@@ -131,19 +131,85 @@ export class ApiRequestError extends Error {
 }
 
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${PUBLIC_API_BASE_URL}${path}`, {
+  return apiRequestWithRefresh<T>(path, init, false)
+}
+
+async function apiRequestWithRefresh<T>(
+  path: string,
+  init: RequestInit,
+  alreadyRefreshed: boolean,
+): Promise<T> {
+  const response = await fetchApi(path, init)
+  if (response.status === 401 && !alreadyRefreshed && shouldAttemptRefresh(path)) {
+    await parseApiResponse<CurrentUser>(await fetchApi('/auth/refresh', { method: 'POST' }))
+    return apiRequestWithRefresh<T>(path, init, true)
+  }
+
+  return parseApiResponse<T>(response)
+}
+
+async function fetchApi(path: string, init: RequestInit = {}) {
+  const method = init.method?.toUpperCase() ?? 'GET'
+  return fetch(`${PUBLIC_API_BASE_URL}${path}`, {
     ...init,
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...init.headers,
-    },
+    headers: buildHeaders(init.headers, method, init.body),
   })
+}
 
+async function parseApiResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const error = await response.text()
     throw new ApiRequestError(error || `API request failed: ${response.status}`, response.status)
   }
 
   return response.json() as Promise<T>
+}
+
+function buildHeaders(headers: HeadersInit | undefined, method: string, body?: BodyInit | null) {
+  const requestHeaders = new Headers(headers)
+  if (body !== undefined && shouldSetJsonContentType(body) && !requestHeaders.has('Content-Type')) {
+    requestHeaders.set('Content-Type', 'application/json')
+  }
+
+  if (requiresCsrf(method) && !requestHeaders.has('x-csrf-token')) {
+    const csrfToken = readCookie('csrf_token')
+    if (csrfToken) {
+      requestHeaders.set('x-csrf-token', csrfToken)
+    }
+  }
+
+  return requestHeaders
+}
+
+function shouldSetJsonContentType(body: BodyInit | null) {
+  return (
+    body !== null &&
+    !(body instanceof FormData) &&
+    !(body instanceof URLSearchParams) &&
+    !(body instanceof Blob)
+  )
+}
+
+function requiresCsrf(method: string) {
+  return !['GET', 'HEAD', 'OPTIONS'].includes(method)
+}
+
+function shouldAttemptRefresh(path: string) {
+  return !['/auth/login', '/auth/register', '/auth/refresh'].includes(path)
+}
+
+function readCookie(name: string) {
+  if (typeof document === 'undefined') {
+    return null
+  }
+
+  return (
+    document.cookie
+      .split('; ')
+      .find((cookie) => cookie.startsWith(`${encodeURIComponent(name)}=`))
+      ?.split('=')
+      .slice(1)
+      .join('=') ?? null
+  )
 }

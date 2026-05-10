@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Patch, Query, UseGuards } from '@nestjs/common';
+import { CsrfGuard } from '../auth/csrf.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { SearchUsersDto, UpdateProfileDto } from './dto';
@@ -6,7 +7,7 @@ import { User } from './user.entity';
 import { UserResponseDto } from './user-response.dto';
 import { UsersService } from './users.service';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CsrfGuard)
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}

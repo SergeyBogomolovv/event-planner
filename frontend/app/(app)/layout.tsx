@@ -5,14 +5,11 @@ import { LogoutButton } from '@/components/logout-button'
 import { MobileAppNav } from '@/components/mobile-app-nav'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { getCurrentUser, getUnreadNotificationsCount } from '@/lib/server-api'
+import { getCurrentUser } from '@/lib/server-api'
 import { userRoleLabels } from '@/lib/user-labels'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const [user, unreadNotificationsCount] = await Promise.all([
-    getCurrentUser(),
-    getUnreadNotificationsCount(),
-  ])
+  const user = await getCurrentUser()
 
   return (
     <main className='min-h-screen bg-[linear-gradient(180deg,#f8faf7_0%,#eef4f1_45%,#f7f7f2_100%)] text-zinc-950'>
@@ -26,7 +23,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <span>Event Planner</span>
           </Link>
           <AppSidebarNav
-            unreadNotificationsCount={unreadNotificationsCount}
             isAdmin={user.role === 'admin'}
           />
 
@@ -47,7 +43,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <section className='relative flex min-w-0 flex-1 flex-col'>
           <header className='sticky top-0 z-20 flex items-center justify-between border-b border-zinc-200/80 bg-white/85 px-6 py-4 backdrop-blur'>
             <div className='flex min-w-0 items-center gap-3'>
-              <MobileAppNav user={user} unreadNotificationsCount={unreadNotificationsCount} />
+              <MobileAppNav user={user} />
               <CalendarDays className='hidden h-5 w-5 md:block' />
               <span className='truncate font-medium'>Кабинет</span>
             </div>

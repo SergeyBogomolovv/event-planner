@@ -13,7 +13,7 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/s
 
 type MobileAppNavProps = {
   user: CurrentUser
-  unreadNotificationsCount: number
+  unreadNotificationsCount?: number
 }
 
 export function MobileAppNav({ user, unreadNotificationsCount }: MobileAppNavProps) {

@@ -8,7 +8,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
 import { Event, EventStatus } from '../events/event.entity';
 import { NotificationsService } from '../notifications/notifications.service';
-import { User } from '../users/user.entity';
+import { User, UserRole, UserStatus } from '../users/user.entity';
+import { isUniqueViolation } from '../common/db-errors';
 import {
   EventParticipant,
   EventParticipantStatus,
@@ -57,6 +58,9 @@ export class ParticipantsService {
     if (!invitedUser) {
       throw new NotFoundException('User not found');
     }
+    if (invitedUser.status !== UserStatus.Active) {
+      throw new BadRequestException('User cannot be invited');
+    }
 
     const existing = await this.participants.findOne({
       where: { eventId, userId: invitedUserId },
@@ -83,20 +87,12 @@ export class ParticipantsService {
       return saved;
     }
 
-    const participant = await this.participants.save(
-      this.participants.create({
-        eventId,
-        event,
-        userId: invitedUserId,
-        user: invitedUser,
-        status: EventParticipantStatus.Invited,
-        invitedById: organizer.id,
-        invitedBy: organizer,
-        invitedAt: new Date(),
-        respondedAt: null,
-        removedAt: null,
-      }),
-    );
+    const participant = await this.saveNewInvitation({
+      eventId,
+      event,
+      invitedUser,
+      organizer,
+    });
     await this.notificationsService.notifyEventInvitation(participant);
     return participant;
   }
@@ -118,7 +114,9 @@ export class ParticipantsService {
 
   async findManageList(eventId: string, organizer: User) {
     const event = await this.requireEvent(eventId);
-    this.assertOrganizer(event, organizer);
+    if (organizer.role !== UserRole.Admin) {
+      this.assertOrganizer(event, organizer);
+    }
 
     const participants = await this.participants.find({
       where: { eventId },
@@ -261,7 +259,7 @@ export class ParticipantsService {
   }
 
   private async assertCanViewParticipants(event: Event, user: User) {
-    if (event.organizerId === user.id) {
+    if (event.organizerId === user.id || user.role === UserRole.Admin) {
       return;
     }
 
@@ -298,6 +296,35 @@ export class ParticipantsService {
 
     if (acceptedCount >= event.participantLimit) {
       throw new BadRequestException('Participant limit has been reached');
+    }
+  }
+
+  private async saveNewInvitation(params: {
+    eventId: string;
+    event: Event;
+    invitedUser: User;
+    organizer: User;
+  }): Promise<EventParticipant> {
+    try {
+      return await this.participants.save(
+        this.participants.create({
+          eventId: params.eventId,
+          event: params.event,
+          userId: params.invitedUser.id,
+          user: params.invitedUser,
+          status: EventParticipantStatus.Invited,
+          invitedById: params.organizer.id,
+          invitedBy: params.organizer,
+          invitedAt: new Date(),
+          respondedAt: null,
+          removedAt: null,
+        }),
+      );
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new BadRequestException('User is already invited');
+      }
+      throw error;
     }
   }
 }

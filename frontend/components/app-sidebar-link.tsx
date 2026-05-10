@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -13,6 +14,7 @@ import {
   UsersRound,
   type LucideIcon,
 } from 'lucide-react'
+import { apiRequest } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 type AppSidebarLinkProps = {
@@ -83,11 +85,36 @@ type AppSidebarNavProps = {
 }
 
 export function AppSidebarNav({
-  unreadNotificationsCount = 0,
+  unreadNotificationsCount,
   isAdmin = false,
   onNavigate,
 }: AppSidebarNavProps) {
   const items = isAdmin ? [...navigationItems, adminNavigationItem] : navigationItems
+  const [clientUnreadCount, setClientUnreadCount] = useState(0)
+  const displayedUnreadCount = unreadNotificationsCount ?? clientUnreadCount
+
+  useEffect(() => {
+    if (unreadNotificationsCount !== undefined) {
+      return
+    }
+
+    let active = true
+    void apiRequest<{ count: number }>('/notifications/unread-count')
+      .then((response) => {
+        if (active) {
+          setClientUnreadCount(response.count)
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setClientUnreadCount(0)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [unreadNotificationsCount])
 
   return (
     <nav className='mt-8 space-y-1'>
@@ -96,7 +123,7 @@ export function AppSidebarNav({
           key={item.href}
           {...item}
           onNavigate={onNavigate}
-          badgeCount={item.href === '/notifications' ? unreadNotificationsCount : undefined}
+          badgeCount={item.href === '/notifications' ? displayedUnreadCount : undefined}
         />
       ))}
     </nav>

@@ -2,14 +2,17 @@ import {
   Controller,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { CsrfGuard } from '../auth/csrf.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { User } from '../users/user.entity';
-import { AdminGuard } from './admin.guard';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
+import { User, UserRole } from '../users/user.entity';
 import {
   AdminEventResponseDto,
   AdminStatsResponseDto,
@@ -23,7 +26,8 @@ import {
 } from './admin.service';
 import { AdminListQueryDto } from './dto';
 
-@UseGuards(JwtAuthGuard, AdminGuard)
+@UseGuards(JwtAuthGuard, CsrfGuard, RolesGuard)
+@Roles(UserRole.Admin)
 @Controller('admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
@@ -48,7 +52,7 @@ export class AdminController {
 
   @Patch('users/:userId/block')
   async blockUser(
-    @Param('userId') userId: string,
+    @Param('userId', ParseUUIDPipe) userId: string,
     @CurrentUser() currentUser: User,
   ): Promise<AdminUserResponseDto> {
     const user = await this.adminService.blockUser(userId, currentUser);
@@ -57,7 +61,7 @@ export class AdminController {
 
   @Patch('users/:userId/unblock')
   async unblockUser(
-    @Param('userId') userId: string,
+    @Param('userId', ParseUUIDPipe) userId: string,
   ): Promise<AdminUserResponseDto> {
     const user = await this.adminService.unblockUser(userId);
     return new AdminUserResponseDto(user);

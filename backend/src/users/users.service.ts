@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
+import { isUniqueViolation } from '../common/db-errors';
 import { UpdateProfileDto } from './dto';
 import { User, UserRole, UserStatus } from './user.entity';
 
@@ -22,17 +23,22 @@ export class UsersService {
       throw new ConflictException('Email is already registered');
     }
 
-    const user = await this.users.save(
-      this.users.create({
-        email,
-        name: this.normalizeName(params.name),
-        passwordHash: params.passwordHash,
-        role: UserRole.User,
-        status: UserStatus.Active,
-      }),
-    );
-
-    return user;
+    try {
+      return await this.users.save(
+        this.users.create({
+          email,
+          name: this.normalizeName(params.name),
+          passwordHash: params.passwordHash,
+          role: UserRole.User,
+          status: UserStatus.Active,
+        }),
+      );
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new ConflictException('Email is already registered');
+      }
+      throw error;
+    }
   }
 
   findByEmail(email: string) {
@@ -79,7 +85,14 @@ export class UsersService {
       user.name = this.normalizeName(dto.name);
     }
 
-    return this.users.save(user);
+    try {
+      return await this.users.save(user);
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new ConflictException('Email is already registered');
+      }
+      throw error;
+    }
   }
 
   search(params: { query: string; limit?: number; excludeUserId: string }) {

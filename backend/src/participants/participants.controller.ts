@@ -4,9 +4,11 @@ import {
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { CsrfGuard } from '../auth/csrf.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { User } from '../users/user.entity';
@@ -17,7 +19,7 @@ import {
 } from './participant-response.dto';
 import { ParticipantsService } from './participants.service';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CsrfGuard)
 @Controller()
 export class ParticipantsController {
   constructor(private readonly participantsService: ParticipantsService) {}
@@ -32,7 +34,7 @@ export class ParticipantsController {
 
   @Post('events/:eventId/participants')
   async invite(
-    @Param('eventId') eventId: string,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
     @Body() dto: InviteParticipantDto,
     @CurrentUser() user: User,
   ) {
@@ -46,7 +48,7 @@ export class ParticipantsController {
 
   @Get('events/:eventId/participants')
   async findPublicList(
-    @Param('eventId') eventId: string,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
     @CurrentUser() user: User,
   ) {
     const result = await this.participantsService.findPublicList(eventId, user);
@@ -60,7 +62,7 @@ export class ParticipantsController {
 
   @Get('events/:eventId/participants/manage')
   async findManageList(
-    @Param('eventId') eventId: string,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
     @CurrentUser() user: User,
   ) {
     const result = await this.participantsService.findManageList(eventId, user);
@@ -71,8 +73,8 @@ export class ParticipantsController {
 
   @Post('events/:eventId/participants/:userId/accept')
   async accept(
-    @Param('eventId') eventId: string,
-    @Param('userId') userId: string,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('userId', ParseUUIDPipe) userId: string,
     @CurrentUser() user: User,
   ) {
     const participant = await this.participantsService.accept(
@@ -85,8 +87,8 @@ export class ParticipantsController {
 
   @Post('events/:eventId/participants/:userId/decline')
   async decline(
-    @Param('eventId') eventId: string,
-    @Param('userId') userId: string,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('userId', ParseUUIDPipe) userId: string,
     @CurrentUser() user: User,
   ) {
     const participant = await this.participantsService.decline(
@@ -99,8 +101,8 @@ export class ParticipantsController {
 
   @Post('events/:eventId/participants/:userId/leave')
   async leave(
-    @Param('eventId') eventId: string,
-    @Param('userId') userId: string,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('userId', ParseUUIDPipe) userId: string,
     @CurrentUser() user: User,
   ) {
     const participant = await this.participantsService.leave(
@@ -113,8 +115,8 @@ export class ParticipantsController {
 
   @Delete('events/:eventId/participants/:userId')
   async remove(
-    @Param('eventId') eventId: string,
-    @Param('userId') userId: string,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('userId', ParseUUIDPipe) userId: string,
     @CurrentUser() user: User,
   ) {
     const participant = await this.participantsService.remove(

@@ -8,6 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { randomBytes } from 'node:crypto';
 import type { CookieOptions } from 'express';
 import type { Request, Response } from 'express';
 import {
@@ -16,6 +17,7 @@ import {
   REFRESH_MAX_AGE_MS,
   type AuthSession,
 } from './auth.service';
+import { CsrfGuard } from './csrf.guard';
 import { CurrentUser } from './current-user.decorator';
 import { LoginDto, RegisterDto } from './dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -59,6 +61,7 @@ export class AuthController {
     return new UserResponseDto(session.user);
   }
 
+  @UseGuards(CsrfGuard)
   @Post('refresh')
   async refresh(
     @Req() request: Request,
@@ -71,7 +74,7 @@ export class AuthController {
     return new UserResponseDto(session.user);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, CsrfGuard)
   @Post('logout')
   async logout(
     @CurrentUser() user: User,
@@ -89,6 +92,8 @@ export class AuthController {
   }
 
   private setAuthCookies(response: Response, session: AuthSession): void {
+    const csrfToken = randomBytes(32).toString('hex');
+
     response.cookie('access_token', session.accessToken, {
       ...this.cookieOptions(),
       maxAge: ACCESS_MAX_AGE_MS,
@@ -97,16 +102,21 @@ export class AuthController {
       ...this.cookieOptions(),
       maxAge: REFRESH_MAX_AGE_MS,
     });
+    response.cookie('csrf_token', csrfToken, {
+      ...this.cookieOptions({ httpOnly: false }),
+      maxAge: REFRESH_MAX_AGE_MS,
+    });
   }
 
   private clearAuthCookies(response: Response): void {
     response.clearCookie('access_token', this.cookieOptions());
     response.clearCookie('refresh_token', this.cookieOptions());
+    response.clearCookie('csrf_token', this.cookieOptions({ httpOnly: false }));
   }
 
-  private cookieOptions(): CookieOptions {
+  private cookieOptions(options: { httpOnly?: boolean } = {}): CookieOptions {
     return {
-      httpOnly: true,
+      httpOnly: options.httpOnly ?? true,
       sameSite: 'lax',
       secure: this.config.get<boolean>('COOKIE_SECURE') ?? false,
       path: '/',

@@ -1,4 +1,7 @@
+import 'server-only'
+
 import { cookies } from 'next/headers'
+import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { SERVER_API_BASE_URL } from './api-config'
 import type {
@@ -32,18 +35,17 @@ export async function serverApiRequest<T>(
   init: RequestInit = {},
   options: ServerApiOptions = {},
 ): Promise<T> {
+  const cookieStore = await cookies()
+  const method = init.method?.toUpperCase() ?? 'GET'
   const response = await fetch(`${SERVER_API_BASE_URL}${path}`, {
     ...init,
-    headers: {
-      ...init.headers,
-      cookie: await getCookieHeader(),
-    },
+    headers: buildServerHeaders(init.headers, method, cookieStore),
     cache: init.cache ?? 'no-store',
   })
 
   if (!response.ok) {
     if (options.redirectToLogin && response.status === 401) {
-      redirect('/login')
+      await redirectToRefreshOrLogin()
     }
     throw new ServerApiRequestError(`Server API request failed: ${response.status}`, response.status)
   }
@@ -134,10 +136,44 @@ function toSearchParams(params: Record<string, string | number>) {
   ).toString()
 }
 
-async function getCookieHeader() {
-  const cookieStore = await cookies()
-  return cookieStore
-    .getAll()
+function buildServerHeaders(
+  headers: HeadersInit | undefined,
+  method: string,
+  cookieStore: Awaited<ReturnType<typeof cookies>>,
+) {
+  const requestHeaders = new Headers(headers)
+  requestHeaders.set('cookie', getCookieHeader(cookieStore))
+
+  if (requiresCsrf(method) && !requestHeaders.has('x-csrf-token')) {
+    const csrfToken = cookieStore.get('csrf_token')?.value
+    if (csrfToken) {
+      requestHeaders.set('x-csrf-token', csrfToken)
+    }
+  }
+
+  return requestHeaders
+}
+
+function requiresCsrf(method: string) {
+  return !['GET', 'HEAD', 'OPTIONS'].includes(method)
+}
+
+function getCookieHeader(cookieStore: Awaited<ReturnType<typeof cookies>>) {
+  return ['access_token', 'refresh_token', 'csrf_token']
+    .map((name) => cookieStore.get(name))
+    .filter((cookie): cookie is { name: string; value: string } => Boolean(cookie))
     .map((cookie) => `${cookie.name}=${cookie.value}`)
     .join('; ')
+}
+
+async function redirectToRefreshOrLogin(): Promise<never> {
+  const requestHeaders = await headers()
+  const currentPath = requestHeaders.get('x-current-path') ?? '/dashboard'
+  const cookieStore = await cookies()
+
+  if (cookieStore.has('refresh_token')) {
+    redirect(`/api/auth/refresh?next=${encodeURIComponent(currentPath)}`)
+  }
+
+  redirect(`/login?next=${encodeURIComponent(currentPath)}`)
 }

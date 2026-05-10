@@ -6,8 +6,10 @@ import {
   Param,
   Patch,
   Post,
+  ParseUUIDPipe,
   UseGuards,
 } from '@nestjs/common';
+import { CsrfGuard } from '../auth/csrf.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { EventParticipantStatus } from '../participants/event-participant.entity';
@@ -16,7 +18,7 @@ import { CreateEventDto, UpdateEventDto } from './dto';
 import { EventResponseDto } from './event-response.dto';
 import { EventsService } from './events.service';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CsrfGuard)
 @Controller('events')
 export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
@@ -43,7 +45,10 @@ export class EventsController {
   }
 
   @Get(':eventId')
-  async findOne(@Param('eventId') eventId: string, @CurrentUser() user: User) {
+  async findOne(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @CurrentUser() user: User,
+  ) {
     const event = await this.eventsService.findOne(eventId, user);
     const participant = await this.eventsService.getParticipantStatus(
       eventId,
@@ -54,7 +59,7 @@ export class EventsController {
 
   @Patch(':eventId')
   async update(
-    @Param('eventId') eventId: string,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
     @Body() dto: UpdateEventDto,
     @CurrentUser() user: User,
   ) {
@@ -63,25 +68,37 @@ export class EventsController {
   }
 
   @Post(':eventId/publish')
-  async publish(@Param('eventId') eventId: string, @CurrentUser() user: User) {
+  async publish(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @CurrentUser() user: User,
+  ) {
     const event = await this.eventsService.publish(eventId, user);
     return new EventResponseDto(event, user);
   }
 
   @Post(':eventId/cancel')
-  async cancel(@Param('eventId') eventId: string, @CurrentUser() user: User) {
+  async cancel(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @CurrentUser() user: User,
+  ) {
     const event = await this.eventsService.cancel(eventId, user);
     return new EventResponseDto(event, user);
   }
 
   @Post(':eventId/complete')
-  async complete(@Param('eventId') eventId: string, @CurrentUser() user: User) {
+  async complete(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @CurrentUser() user: User,
+  ) {
     const event = await this.eventsService.complete(eventId, user);
     return new EventResponseDto(event, user);
   }
 
   @Delete(':eventId')
-  remove(@Param('eventId') eventId: string, @CurrentUser() user: User) {
+  remove(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @CurrentUser() user: User,
+  ) {
     return this.eventsService.remove(eventId, user);
   }
 }
