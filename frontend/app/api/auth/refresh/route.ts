@@ -15,23 +15,30 @@ export async function GET(request: NextRequest) {
   })
 
   if (!backendResponse.ok) {
-    return redirectToPath(`/login?next=${encodeURIComponent(nextPath)}`)
+    return redirectToPath(`/login?next=${encodeURIComponent(nextPath)}`, request)
   }
 
-  const response = redirectToPath(nextPath)
+  const response = redirectToPath(nextPath, request)
   for (const cookie of getSetCookieHeaders(backendResponse.headers)) {
     response.headers.append('set-cookie', cookie)
   }
   return response
 }
 
-function redirectToPath(path: string) {
-  return new NextResponse(null, {
-    status: 307,
-    headers: {
-      location: path,
-    },
-  })
+function redirectToPath(path: string, request: NextRequest) {
+  return NextResponse.redirect(resolvePublicUrl(path, request))
+}
+
+function resolvePublicUrl(path: string, request: NextRequest) {
+  const host =
+    request.headers.get('x-forwarded-host') ??
+    request.headers.get('host') ??
+    request.nextUrl.host
+  const proto =
+    request.headers.get('x-forwarded-proto') ??
+    request.nextUrl.protocol.replace(':', '')
+
+  return new URL(path, `${proto}://${host}`)
 }
 
 function getCookieHeader(request: NextRequest) {

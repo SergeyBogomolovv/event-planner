@@ -11,10 +11,11 @@ export function proxy(request: NextRequest) {
     if (hasRefreshToken) {
       return redirectToPath(
         `/api/auth/refresh?next=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`,
+        request,
       )
     }
 
-    return redirectToPath(`/login?next=${encodeURIComponent(pathname)}`)
+    return redirectToPath(`/login?next=${encodeURIComponent(pathname)}`, request)
   }
 
   if (protectedRoutes.some((route) => pathname.startsWith(route))) {
@@ -30,13 +31,20 @@ export function proxy(request: NextRequest) {
   return NextResponse.next()
 }
 
-function redirectToPath(path: string) {
-  return new NextResponse(null, {
-    status: 307,
-    headers: {
-      location: path,
-    },
-  })
+function redirectToPath(path: string, request: NextRequest) {
+  return NextResponse.redirect(resolvePublicUrl(path, request))
+}
+
+function resolvePublicUrl(path: string, request: NextRequest) {
+  const host =
+    request.headers.get('x-forwarded-host') ??
+    request.headers.get('host') ??
+    request.nextUrl.host
+  const proto =
+    request.headers.get('x-forwarded-proto') ??
+    request.nextUrl.protocol.replace(':', '')
+
+  return new URL(path, `${proto}://${host}`)
 }
 
 export const config = {
