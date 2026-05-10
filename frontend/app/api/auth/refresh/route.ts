@@ -15,16 +15,23 @@ export async function GET(request: NextRequest) {
   })
 
   if (!backendResponse.ok) {
-    const loginUrl = new URL('/login', request.url)
-    loginUrl.searchParams.set('next', nextPath)
-    return NextResponse.redirect(loginUrl)
+    return redirectToPath(`/login?next=${encodeURIComponent(nextPath)}`)
   }
 
-  const response = NextResponse.redirect(new URL(nextPath, request.url))
+  const response = redirectToPath(nextPath)
   for (const cookie of getSetCookieHeaders(backendResponse.headers)) {
     response.headers.append('set-cookie', cookie)
   }
   return response
+}
+
+function redirectToPath(path: string) {
+  return new NextResponse(null, {
+    status: 307,
+    headers: {
+      location: path,
+    },
+  })
 }
 
 function getCookieHeader(request: NextRequest) {

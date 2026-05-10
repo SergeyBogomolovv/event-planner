@@ -9,16 +9,12 @@ export function proxy(request: NextRequest) {
 
   if (protectedRoutes.some((route) => pathname.startsWith(route)) && !hasAccessToken) {
     if (hasRefreshToken) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/api/auth/refresh'
-      url.searchParams.set('next', `${pathname}${request.nextUrl.search}`)
-      return NextResponse.redirect(url)
+      return redirectToPath(
+        `/api/auth/refresh?next=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`,
+      )
     }
 
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    url.searchParams.set('next', pathname)
-    return NextResponse.redirect(url)
+    return redirectToPath(`/login?next=${encodeURIComponent(pathname)}`)
   }
 
   if (protectedRoutes.some((route) => pathname.startsWith(route))) {
@@ -32,6 +28,15 @@ export function proxy(request: NextRequest) {
   }
 
   return NextResponse.next()
+}
+
+function redirectToPath(path: string) {
+  return new NextResponse(null, {
+    status: 307,
+    headers: {
+      location: path,
+    },
+  })
 }
 
 export const config = {
